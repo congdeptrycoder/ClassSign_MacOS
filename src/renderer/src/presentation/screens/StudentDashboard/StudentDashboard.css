@@ -1,0 +1,145 @@
+.student-container {
+  height: 100vh;
+  background-color: var(--background);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.welcome-banner {
+  background: linear-gradient(to right, var(--loginGradient-start), var(--loginGradient-end));
+  padding: 30px;
+  border-radius: 12px;
+  color: white;
+  margin-bottom: 20px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.what-time-is-it {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.student-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 20px;
+}
+
+.registration-box {
+  display: flex;
+  gap: 10px;
+}
+
+.registration-box .search-input {
+  flex: 1;
+}
+
+.student-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 15px;
+  color: var(--buttonPrimary);
+  border-left: 4px solid var(--buttonPrimary);
+  padding-left: 10px;
+}
+
+.registration-table {
+  margin-bottom: 20px;
+}
+
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.info-table th, .info-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--tableBorder);
+}
+
+.info-table th {
+  background: var(--tableHeader);
+  color: var(--tableHeaderText);
+  font-size: 13px;
+}
+
+.status-cell {
+  color: #28a745;
+  font-weight: 700;
+}
+
+.timetable-section {
+  padding: 20px;
+}
+
+.time-grid {
+  display: flex;
+  flex-direction: column;
+  min-width: 800px;
+}
+
+.grid-header, .grid-row {
+  display: grid;
+  grid-template-columns: 100px repeat(7, 1fr);
+  border-bottom: 1px solid var(--tableBorder);
+}
+
+.grid-header {
+  background: var(--tableHeader);
+  font-weight: 700;
+  color: var(--tableHeaderText);
+}
+
+.grid-cell {
+  padding: 10px;
+  text-align: center;
+  border-right: 1px solid var(--tableBorder);
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grid-cell.active {
+  background-color: rgba(139, 0, 0, 0.1);
+}
+
+.event-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--buttonPrimary);
+}
+
+.grid-divider {
+  background: var(--surface);
+  text-align: center;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--textSecondary);
+  text-transform: uppercase;
+}
+
+.grid-period-label {
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--textSecondary);
+}
+
+@media (max-width: 768px) {
+  .registration-box {
+    flex-direction: column;
+  }
+}
