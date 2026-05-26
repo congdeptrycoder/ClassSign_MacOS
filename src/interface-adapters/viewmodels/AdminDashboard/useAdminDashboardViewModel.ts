@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 export interface ClassInfo {
     ky: string;
@@ -134,6 +134,71 @@ export const useAdminDashboardViewModel = (
     const departmentOptions = Object.keys(majorMapping);
     const majorOptions = department ? majorMapping[department] ?? [] : [];
 
+    // --- MỚI THÊM: Quản lý giai đoạn đăng ký ---
+    const [regPeriodType, setRegPeriodType] = useState<'module' | 'class' | 'none'>('module');
+    const [regPeriodStart, setRegPeriodStart] = useState<string>('');
+    const [regPeriodEnd, setRegPeriodEnd] = useState<string>('');
+    const [savedRegPeriod, setSavedRegPeriod] = useState<any>(null);
+    const [isEditingPeriod, setIsEditingPeriod] = useState<boolean>(true);
+
+    // Khôi phục giá trị từ localStorage khi component mount
+    React.useEffect(() => {
+        const savedData = localStorage.getItem('REGISTRATION_PERIOD');
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                if (parsed && parsed.type !== 'none') {
+                    setSavedRegPeriod(parsed);
+                    setRegPeriodType(parsed.type);
+                    setRegPeriodStart(parsed.startTime);
+                    setRegPeriodEnd(parsed.endTime);
+                    setIsEditingPeriod(false);
+                }
+            } catch (error) {
+                console.error("Lỗi khi đọc REGISTRATION_PERIOD từ localStorage", error);
+            }
+        }
+    }, []);
+
+    const handleSaveRegistrationPeriod = () => {
+        if (!regPeriodStart || !regPeriodEnd) {
+            window.alert('Vui lòng chọn đầy đủ thời gian bắt đầu và kết thúc!');
+            return;
+        }
+
+        if (new Date(regPeriodStart) >= new Date(regPeriodEnd)) {
+            window.alert('Thời gian bắt đầu phải trước thời gian kết thúc!');
+            return;
+        }
+
+        const dataToSave = {
+            type: regPeriodType,
+            startTime: regPeriodStart,
+            endTime: regPeriodEnd
+        };
+        localStorage.setItem('REGISTRATION_PERIOD', JSON.stringify(dataToSave));
+        setSavedRegPeriod(dataToSave);
+        setIsEditingPeriod(false);
+        window.alert('Lưu cấu hình Giai đoạn đăng ký thành công!');
+    };
+
+    const handleDeleteRegistrationPeriod = () => {
+        if (window.confirm('Bạn có chắc chắn muốn xóa thiết lập đợt đăng ký này?')) {
+            const dataToSave = { type: 'none', startTime: '', endTime: '' };
+            localStorage.setItem('REGISTRATION_PERIOD', JSON.stringify(dataToSave));
+            setSavedRegPeriod(null);
+            setIsEditingPeriod(true);
+            setRegPeriodType('module');
+            setRegPeriodStart('');
+            setRegPeriodEnd('');
+        }
+    };
+
+    const handleEditRegistrationPeriod = () => {
+        setIsEditingPeriod(true);
+    };
+    // ---------------------------------------------
+
     return {
         isProfileOpen,
         toggleProfile,
@@ -161,5 +226,17 @@ export const useAdminDashboardViewModel = (
         departmentOptions,
         majorOptions,
         handleSelectDepartment,
+        // Xuất thêm các thuộc tính mới
+        regPeriodType,
+        setRegPeriodType,
+        regPeriodStart,
+        setRegPeriodStart,
+        regPeriodEnd,
+        setRegPeriodEnd,
+        handleSaveRegistrationPeriod,
+        savedRegPeriod,
+        isEditingPeriod,
+        handleEditRegistrationPeriod,
+        handleDeleteRegistrationPeriod,
     };
 };

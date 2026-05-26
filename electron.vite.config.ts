@@ -4,15 +4,37 @@ import { resolve } from 'path'
 
 export default defineConfig({
   main: {
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/infrastructure/electron/main/index.ts')
+        }
+      }
+    },
     plugins: [externalizeDepsPlugin()]
   },
   preload: {
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/infrastructure/electron/preload/index.ts')
+        }
+      }
+    },
     plugins: [externalizeDepsPlugin()]
   },
   renderer: {
+    root: 'src',
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/index.html')
+        }
+      }
+    },
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src')
+        '@renderer': resolve('src')
       }
     },
     plugins: [react()]

@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import {
     ClassInfo,
     useAdminDashboardViewModel,
-} from '../../../../../interface-adapters/viewmodels/AdminDashboard/useAdminDashboardViewModel';
+} from '../../../interface-adapters/viewmodels/AdminDashboard/useAdminDashboardViewModel';
 import { useTheme } from '../../components/ThemeContext';
-import hustLogo from '../../../../../../public/images/hust-logo.png';
+import hustLogo from '../../../../public/images/hust-logo.png';
 import './AdminDashboard.css';
 
 const tableHeaders = [
@@ -45,6 +45,18 @@ export const AdminDashboard = () => {
         departmentOptions,
         majorOptions,
         handleSelectDepartment,
+        // Registration Period
+        regPeriodType,
+        setRegPeriodType,
+        regPeriodStart,
+        setRegPeriodStart,
+        regPeriodEnd,
+        setRegPeriodEnd,
+        handleSaveRegistrationPeriod,
+        savedRegPeriod,
+        isEditingPeriod,
+        handleEditRegistrationPeriod,
+        handleDeleteRegistrationPeriod,
     } = useAdminDashboardViewModel(onNavigateToEdit, onLogout);
 
     const { isDark, toggleTheme } = useTheme();
@@ -74,9 +86,73 @@ export const AdminDashboard = () => {
             )}
 
             <main className="admin-content">
-                <div className="warning-banner">
-                    ⚠️ ĐƯỢC PHÉP CHỈNH SỬA! Giai đoạn TEST
-                </div>
+                <section className="registration-setup card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ margin: 0 }}>Thông tin Giai đoạn đăng ký</h3>
+                        {!isEditingPeriod && (
+                            <div>
+                                <button className="edit-btn" onClick={handleEditRegistrationPeriod} style={{ marginRight: '10px' }}>Sửa</button>
+                                <button className="delete-btn" onClick={handleDeleteRegistrationPeriod}>Xoá</button>
+                            </div>
+                        )}
+                    </div>
+
+                    {isEditingPeriod ? (
+                        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <label>Loại đăng ký:</label>
+                                <select
+                                    value={regPeriodType}
+                                    onChange={(e) => setRegPeriodType(e.target.value as 'module' | 'class' | 'none')}
+                                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                                >
+                                    <option value="module">Đăng ký Học phần</option>
+                                    <option value="class">Đăng ký Lớp học</option>
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <label>Từ:</label>
+                                <input
+                                    type="datetime-local"
+                                    value={regPeriodStart}
+                                    onChange={(e) => setRegPeriodStart(e.target.value)}
+                                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <label>Đến:</label>
+                                <input
+                                    type="datetime-local"
+                                    value={regPeriodEnd}
+                                    onChange={(e) => setRegPeriodEnd(e.target.value)}
+                                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                                />
+                            </div>
+                            <button className="primary-btn" onClick={handleSaveRegistrationPeriod}>Lưu thiết lập</button>
+                        </div>
+                    ) : savedRegPeriod ? (
+                        <table className="info-table" style={{ width: '100%', marginTop: '10px' }}>
+                            <thead>
+                                <tr>
+                                    <th>Loại đăng ký</th>
+                                    <th>Từ ngày</th>
+                                    <th>Đến ngày</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{savedRegPeriod.type === 'module' ? 'Đăng ký Học phần' : 'Đăng ký Lớp học'}</td>
+                                    <td>{new Date(savedRegPeriod.startTime).toLocaleString('vi-VN')}</td>
+                                    <td>{new Date(savedRegPeriod.endTime).toLocaleString('vi-VN')}</td>
+                                    <td className="status-cell" style={{ fontWeight: 'bold', color: (new Date() >= new Date(savedRegPeriod.startTime) && new Date() <= new Date(savedRegPeriod.endTime)) ? '#4CAF50' : '#f44336' }}>
+                                        {(new Date() >= new Date(savedRegPeriod.startTime) && new Date() <= new Date(savedRegPeriod.endTime)) ? 'ĐANG MỞ' : 'ĐÃ ĐÓNG'}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    ) : null}
+                </section>
 
                 <section className="action-bar card">
                     <div className="upload-section">

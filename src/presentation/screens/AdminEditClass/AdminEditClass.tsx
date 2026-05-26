@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ClassInfo } from '../../../../../interface-adapters/viewmodels/AdminDashboard/useAdminDashboardViewModel';
-import { useAdminEditClassViewModel } from '../../../../../interface-adapters/viewmodels/AdminEditClass/useAdminEditClassViewModel';
+import { ClassInfo } from '../../../interface-adapters/viewmodels/AdminDashboard/useAdminDashboardViewModel';
+import { useAdminEditClassViewModel } from '../../../interface-adapters/viewmodels/AdminEditClass/useAdminEditClassViewModel';
 import { useTheme } from '../../components/ThemeContext';
 import './AdminEditClass.css';
 

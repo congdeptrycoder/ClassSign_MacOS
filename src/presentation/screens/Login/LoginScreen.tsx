@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLoginViewModel } from '../../../../../interface-adapters/viewmodels/Login/useLoginViewModel';
+import { useLoginViewModel } from '../../../interface-adapters/viewmodels/Login/useLoginViewModel';
 import { useTheme } from '../../components/ThemeContext';
-import hustLogo from '../../../../../../public/images/hust-logo.png';
+import hustLogo from '../../../../public/images/hust-logo.png';
 import './LoginScreen.css';
 
 export const LoginScreen = () => {

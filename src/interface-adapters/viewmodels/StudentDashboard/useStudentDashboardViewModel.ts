@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 export interface RegisteredSubject {
     id: string;
@@ -17,6 +17,75 @@ export interface TimeEvent {
 export const useStudentDashboardViewModel = (onLogout: () => void) => {
     const [isUserInfoVisible, setIsUserInfoVisible] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isSuggestionVisible, setIsSuggestionVisible] = useState(false);
+    
+    const [registeredSubjects, setRegisteredSubjects] = useState<RegisteredSubject[]>([
+        { id: '1', code: 'IT3040', name: 'Kỹ thuật phần mềm', status: 'Thành công', credits: 3 },
+        { id: '2', code: 'IT3020', name: 'Toán rời rạc', status: 'Thành công', credits: 3 },
+    ]);
+    const [currentRegPeriodType, setCurrentRegPeriodType] = useState<'module' | 'class' | 'none'>('none');
+
+    // Danh sách học phần được phép đăng ký (Mock)
+    const allowedSubjects = React.useMemo(() => [
+        { code: 'IT4060', name: 'Thiết kế hệ thống mạng', credits: 3 },
+        { code: 'MI2010', name: 'Toán cao cấp', credits: 4 },
+        { code: 'IT1110', name: 'Tin học đại cương', credits: 4 },
+        { code: 'IT2120', name: 'Kiến trúc máy tính', credits: 3 },
+    ], []);
+
+    const suggestedSubjects = React.useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        const query = searchQuery.trim().toLowerCase();
+        return allowedSubjects.filter(
+            sub => sub.code.toLowerCase().includes(query) || sub.name.toLowerCase().includes(query)
+        );
+    }, [searchQuery, allowedSubjects]);
+
+    const handleSelectSuggestion = (code: string) => {
+        setSearchQuery(code);
+        setIsSuggestionVisible(false);
+    };
+
+    const handleSearchQueryChange = (val: string) => {
+        setSearchQuery(val);
+        setIsSuggestionVisible(true);
+    };
+
+    // Kiểm tra thời gian đăng ký hiện tại
+    React.useEffect(() => {
+        const checkRegistrationPeriod = () => {
+            const savedData = localStorage.getItem('REGISTRATION_PERIOD');
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    if (parsed.type === 'none') {
+                        setCurrentRegPeriodType('none');
+                        return;
+                    }
+
+                    const now = new Date();
+                    const start = new Date(parsed.startTime);
+                    const end = new Date(parsed.endTime);
+
+                    if (now >= start && now <= end) {
+                        setCurrentRegPeriodType(parsed.type);
+                    } else {
+                        setCurrentRegPeriodType('none');
+                    }
+                } catch (error) {
+                    console.error("Lỗi khi đọc REGISTRATION_PERIOD từ localStorage", error);
+                    setCurrentRegPeriodType('none');
+                }
+            } else {
+                setCurrentRegPeriodType('none');
+            }
+        };
+
+        checkRegistrationPeriod();
+        // Cập nhật lại mỗi 1 phút phòng khi hết hạn lúc đang mở trang
+        const interval = setInterval(checkRegistrationPeriod, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     const toggleUserInfo = () => {
         setIsUserInfoVisible(currentValue => !currentValue);
@@ -28,38 +97,51 @@ export const useStudentDashboardViewModel = (onLogout: () => void) => {
     };
 
     const handleViewCurriculum = () => {
-        console.log('Xem chương trình đào tạo');
-        window.alert('Chức năng Xem chương trình đào tạo');
+        window.open('https://fed.hust.edu.vn', '_blank');
     };
 
     const handleRegisterSubject = () => {
-        console.log('Đăng ký học phần:', searchQuery);
-        window.alert(`Đăng ký học phần: ${searchQuery}`);
-    };
+        if (!searchQuery.trim()) {
+            window.alert('Vui lòng nhập mã hoặc tên học phần!');
+            return;
+        }
 
-    const registeredSubjects: RegisteredSubject[] = [
-        {
-            id: '1',
-            code: 'IT3040',
-            name: 'Kỹ thuật phần mềm',
+        const query = searchQuery.trim().toLowerCase();
+        
+        // Kiểm tra xem có nằm trong danh sách cho phép không
+        const subjectFound = allowedSubjects.find(
+            sub => sub.code.toLowerCase() === query || sub.name.toLowerCase() === query
+        );
+
+        if (!subjectFound) {
+            window.alert(`Học phần "${searchQuery}" không cho phép đăng ký hoặc không tồn tại trong chương trình của bạn!`);
+            return;
+        }
+
+        // Kiểm tra xem đã đăng ký chưa
+        const alreadyRegistered = registeredSubjects.some(
+            sub => sub.code === subjectFound.code
+        );
+
+        if (alreadyRegistered) {
+            window.alert(`Học phần ${subjectFound.code} - ${subjectFound.name} đã được đăng ký trước đó!`);
+            return;
+        }
+
+        // Thêm vào danh sách
+        const newSubject: RegisteredSubject = {
+            id: Date.now().toString(),
+            code: subjectFound.code,
+            name: subjectFound.name,
             status: 'Thành công',
-            credits: 3,
-        },
-        {
-            id: '2',
-            code: 'IT3020',
-            name: 'Toán rời rạc',
-            status: 'Thành công',
-            credits: 3,
-        },
-        {
-            id: '3',
-            code: 'IT4060',
-            name: 'Thiết kế hệ thống mạng',
-            status: 'Thành công',
-            credits: 3,
-        },
-    ];
+            credits: subjectFound.credits
+        };
+
+        setRegisteredSubjects([...registeredSubjects, newSubject]);
+        setSearchQuery('');
+        setIsSuggestionVisible(false);
+        window.alert(`Đăng ký thành công học phần: ${subjectFound.code} - ${subjectFound.name}`);
+    };
 
     const timeGridEvents: TimeEvent[] = [
         { day: 'T2', period: 1, name: 'IT3040' },
@@ -74,11 +156,16 @@ export const useStudentDashboardViewModel = (onLogout: () => void) => {
         isUserInfoVisible,
         toggleUserInfo,
         searchQuery,
-        setSearchQuery,
+        handleSearchQueryChange,
+        isSuggestionVisible,
+        setIsSuggestionVisible,
+        suggestedSubjects,
+        handleSelectSuggestion,
         handleRegisterSubject,
         handleViewCurriculum,
         handleLogout,
         registeredSubjects,
         timeGridEvents,
+        currentRegPeriodType,
     };
 };
