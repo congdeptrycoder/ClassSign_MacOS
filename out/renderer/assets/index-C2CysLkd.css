@@ -105,8 +105,8 @@ input {
   gap: 8px;
   padding: 8px 16px;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.1);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .login-card {
@@ -115,7 +115,7 @@ input {
   text-align: center;
   background: var(--card);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   animation: fadeIn 0.6s ease-out;
 }
 
@@ -148,10 +148,7 @@ input {
   gap: 15px;
 }
 
-.input-field {
-  width: 100%;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
+
 
 .input-field:focus {
   border-color: var(--buttonPrimary);
@@ -173,8 +170,15 @@ input {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 480px) {
@@ -182,7 +186,33 @@ input {
     padding: 20px;
   }
 }
-.admin-container {
+
+/* UI Effects for Login */
+.input-field {
+  width: 100%;
+  transition: border-color 0.5s ease, background-color 0.5s ease, box-shadow 0.2s;
+}
+
+.input-success {
+  border-color: #28a745 !important;
+  background-color: rgba(131, 195, 20, 0.3) !important;
+}
+
+.input-error {
+  border-color: #dc3545 !important;
+  background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+.login-notification {
+  background-color: #ffc107;
+  color: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-weight: bold;
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}.admin-container {
   height: 100vh;
   background-color: var(--background);
   display: flex;

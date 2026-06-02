@@ -14859,29 +14859,119 @@ function useViewTransitionState(to, { relative } = {}) {
   let nextPath = stripBasename(vtContext.nextLocation.pathname, basename) || vtContext.nextLocation.pathname;
   return matchPath(path.pathname, nextPath) != null || matchPath(path.pathname, currentPath) != null;
 }
+class Account {
+  id;
+  username;
+  name;
+  role;
+  id_card;
+  constructor(id, username, name, role, id_card) {
+    this.id = id;
+    this.username = username;
+    this.name = name;
+    this.role = role;
+    this.id_card = id_card;
+  }
+}
+class AccountRepositoryImpl {
+  async login(username, password) {
+    try {
+      const response = await fetch("http://localhost:3002/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ username, password })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Đăng nhập thất bại.");
+      }
+      const data = await response.json();
+      return new Account(data.id, data.username, data.name, data.role, data.id_card);
+    } catch (error) {
+      console.error("AccountRepositoryImpl login error:", error);
+      throw new Error(error.message || "Lỗi kết nối tới máy chủ.");
+    }
+  }
+}
+class LoginUseCase {
+  accountRepository;
+  constructor(accountRepository) {
+    this.accountRepository = accountRepository;
+  }
+  async execute(username, password) {
+    if (!username || !password) {
+      throw new Error("Vui lòng nhập tài khoản và mật khẩu.");
+    }
+    const account = await this.accountRepository.login(username, password);
+    if (!account) {
+      throw new Error("Sai tài khoản hoặc mật khẩu.");
+    }
+    return account;
+  }
+}
+class LoginController {
+  loginUseCase;
+  constructor(loginUseCase) {
+    this.loginUseCase = loginUseCase;
+  }
+  async login(username, password) {
+    try {
+      const account = await this.loginUseCase.execute(username, password);
+      return {
+        success: true,
+        account
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+  }
+}
 const useLoginViewModel = (onLoginSuccess) => {
   const [password, setPassword] = reactExports.useState("");
-  const handleLogin = (currentUsername) => {
-    if (currentUsername === "admin" && password === "1") {
-      onLoginSuccess?.("admin");
-      return;
+  const [usernameStatus, setUsernameStatus] = reactExports.useState("default");
+  const [passwordStatus, setPasswordStatus] = reactExports.useState("default");
+  const [notification, setNotification] = reactExports.useState(null);
+  const [isLoading, setIsLoading] = reactExports.useState(false);
+  const handleLogin = async (currentUsername) => {
+    setIsLoading(true);
+    setUsernameStatus("default");
+    setPasswordStatus("default");
+    setNotification(null);
+    const repository = new AccountRepositoryImpl();
+    const useCase = new LoginUseCase(repository);
+    const controller = new LoginController(useCase);
+    const result = await controller.login(currentUsername, password);
+    if (result.success && result.account) {
+      const userRole = result.account.role;
+      setUsernameStatus("success");
+      setTimeout(() => {
+        setPasswordStatus("success");
+      }, 300);
+      setTimeout(() => {
+        onLoginSuccess?.(userRole);
+      }, 800);
+    } else {
+      setNotification(result.message || "Sai thông tin đăng nhập.");
+      setUsernameStatus("error");
+      setTimeout(() => {
+        setPasswordStatus("error");
+      }, 500);
     }
-    if (currentUsername === "user" && password === "1") {
-      onLoginSuccess?.("student");
-      return;
-    }
-    console.log("Login attempt with:", {
-      username: currentUsername,
-      password
-    });
-    if (currentUsername && password) {
-      window.alert("Sai tên đăng nhập hoặc mật khẩu!");
-    }
+    setIsLoading(false);
   };
   return {
     password,
     setPassword,
-    handleLogin
+    handleLogin,
+    usernameStatus,
+    passwordStatus,
+    notification,
+    isLoading
   };
 };
 const lightColors = {
@@ -14987,7 +15077,7 @@ const useTheme = () => {
 const hustLogo = "" + new URL("hust-logo-BIrxHkKN.png", import.meta.url).href;
 const LoginScreen = () => {
   const navigate = useNavigate();
-  const { isDark, toggleTheme, colors } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
   const [usernameInput, setUsernameInput] = reactExports.useState("");
   const onLoginSuccess = (role) => {
     if (role === "admin") {
@@ -14996,10 +15086,23 @@ const LoginScreen = () => {
       navigate("/student");
     }
   };
-  const { password, setPassword, handleLogin } = useLoginViewModel(onLoginSuccess);
+  const {
+    password,
+    setPassword,
+    handleLogin,
+    usernameStatus,
+    passwordStatus,
+    notification,
+    isLoading
+  } = useLoginViewModel(onLoginSuccess);
   const handlePressLogin = (e) => {
     e.preventDefault();
     handleLogin(usernameInput);
+  };
+  const getStatusClass = (status) => {
+    if (status === "success") return "input-success";
+    if (status === "error") return "input-error";
+    return "";
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "login-container", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "theme-toggle-btn", onClick: toggleTheme, children: [
@@ -15010,6 +15113,7 @@ const LoginScreen = () => {
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "logo-container", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: hustLogo, alt: "HUST Logo", className: "logo" }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "title", children: "ĐẠI HỌC BÁCH KHOA HÀ NỘI" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "description", children: "Hệ thống đăng ký học tập tiện lợi" }),
+      notification && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-notification", children: notification }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("form", { onSubmit: handlePressLogin, className: "login-form", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "input",
@@ -15019,7 +15123,7 @@ const LoginScreen = () => {
             value: usernameInput,
             onChange: (e) => setUsernameInput(e.target.value),
             autoCapitalize: "none",
-            className: "input-field"
+            className: `input-field ${getStatusClass(usernameStatus)}`
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -15029,10 +15133,10 @@ const LoginScreen = () => {
             placeholder: "Mật khẩu",
             value: password,
             onChange: (e) => setPassword(e.target.value),
-            className: "input-field"
+            className: `input-field ${getStatusClass(passwordStatus)}`
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "submit", className: "login-button", children: "Đăng nhập" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "submit", className: "login-button", disabled: isLoading, children: isLoading ? "Đang đăng nhập..." : "Đăng nhập" })
       ] })
     ] })
   ] });

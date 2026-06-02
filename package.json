@@ -6,23 +6,31 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "start": "electron ."
+    "start": "electron .",
+    "server": "tsx server/index.ts"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^1.0.3",
     "@electron-toolkit/utils": "^3.0.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-router-dom": "^7.1.1"
+    "react-router-dom": "^7.1.1",
+    "sqlite3": "^6.0.1"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^1.0.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.13.9",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
+    "@types/sqlite3": "^3.1.11",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^33.2.1",
     "electron-vite": "^2.3.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.8.3",
     "vite": "^5.4.10"
   }
