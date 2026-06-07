@@ -1,14 +1,5 @@
 import { Request, Response } from 'express';
-import sqlite3 from 'sqlite3';
-import path from 'path';
-
-// Khởi tạo kết nối DB chung cho server (có thể tách riêng sau)
-const dbPath = path.join(__dirname, '../../src/infrastructure/database/database.sqlite');
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Lỗi kết nối cơ sở dữ liệu:', err.message);
-    }
-});
+import db from '../db';
 
 export const login = (req: Request, res: Response) => {
     const { username, password } = req.body;

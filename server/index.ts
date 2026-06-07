@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './auth/auth.routes';
-
+import semesterRoutes from './semester/semester.routes';
+import academicPeriodRoutes from './academic-period/academic-period.routes';
 const app = express();
 const PORT = process.env.PORT || 3002;
 
@@ -11,7 +12,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
-
+app.use('/api/semesters', semesterRoutes);
+app.use('/api/academic-periods', academicPeriodRoutes);
 app.listen(PORT, () => {
     console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });

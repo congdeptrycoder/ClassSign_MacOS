@@ -52,10 +52,13 @@ export const AdminDashboard = () => {
         setRegPeriodStart,
         regPeriodEnd,
         setRegPeriodEnd,
+        selectedSemester,
+        setSelectedSemester,
+        semestersData,
+        periodsData,
         handleSaveRegistrationPeriod,
-        savedRegPeriod,
         isEditingPeriod,
-        handleEditRegistrationPeriod,
+        setIsEditingPeriod,
         handleDeleteRegistrationPeriod,
     } = useAdminDashboardViewModel(onNavigateToEdit, onLogout);
 
@@ -88,26 +91,35 @@ export const AdminDashboard = () => {
             <main className="admin-content">
                 <section className="registration-setup card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ margin: 0 }}>Thông tin Giai đoạn đăng ký</h3>
+                        <h3 style={{ margin: 0 }}>Quản lý Giai đoạn đăng ký</h3>
                         {!isEditingPeriod && (
-                            <div>
-                                <button className="edit-btn" onClick={handleEditRegistrationPeriod} style={{ marginRight: '10px' }}>Sửa</button>
-                                <button className="delete-btn" onClick={handleDeleteRegistrationPeriod}>Xoá</button>
-                            </div>
+                            <button className="primary-btn" onClick={() => setIsEditingPeriod(true)}>Thêm đợt đăng ký mới</button>
                         )}
                     </div>
 
-                    {isEditingPeriod ? (
-                        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {isEditingPeriod && (
+                        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '8px' }}>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <label>Kỳ học:</label>
+                                <select
+                                    value={selectedSemester}
+                                    onChange={(e) => setSelectedSemester(Number(e.target.value))}
+                                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                                >
+                                    {semestersData.map(sem => (
+                                        <option key={sem.id} value={sem.id}>{sem.semester}</option>
+                                    ))}
+                                </select>
+                            </div>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 <label>Loại đăng ký:</label>
                                 <select
                                     value={regPeriodType}
-                                    onChange={(e) => setRegPeriodType(e.target.value as 'module' | 'class' | 'none')}
+                                    onChange={(e) => setRegPeriodType(e.target.value as 'register_program' | 'register_class')}
                                     style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                                 >
-                                    <option value="module">Đăng ký Học phần</option>
-                                    <option value="class">Đăng ký Lớp học</option>
+                                    <option value="register_program">Đăng ký Học phần</option>
+                                    <option value="register_class">Đăng ký Lớp học</option>
                                 </select>
                             </div>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -128,30 +140,43 @@ export const AdminDashboard = () => {
                                     style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                                 />
                             </div>
-                            <button className="primary-btn" onClick={handleSaveRegistrationPeriod}>Lưu thiết lập</button>
+                            <button className="primary-btn" onClick={handleSaveRegistrationPeriod}>Lưu</button>
+                            <button className="delete-btn" onClick={() => setIsEditingPeriod(false)}>Huỷ</button>
                         </div>
-                    ) : savedRegPeriod ? (
+                    )}
+
+                    {periodsData.length > 0 ? (
                         <table className="info-table" style={{ width: '100%', marginTop: '10px' }}>
                             <thead>
                                 <tr>
+                                    <th>Kỳ học</th>
                                     <th>Loại đăng ký</th>
                                     <th>Từ ngày</th>
                                     <th>Đến ngày</th>
                                     <th>Trạng thái</th>
+                                    <th>Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>{savedRegPeriod.type === 'module' ? 'Đăng ký Học phần' : 'Đăng ký Lớp học'}</td>
-                                    <td>{new Date(savedRegPeriod.startTime).toLocaleString('vi-VN')}</td>
-                                    <td>{new Date(savedRegPeriod.endTime).toLocaleString('vi-VN')}</td>
-                                    <td className="status-cell" style={{ fontWeight: 'bold', color: (new Date() >= new Date(savedRegPeriod.startTime) && new Date() <= new Date(savedRegPeriod.endTime)) ? '#4CAF50' : '#f44336' }}>
-                                        {(new Date() >= new Date(savedRegPeriod.startTime) && new Date() <= new Date(savedRegPeriod.endTime)) ? 'ĐANG MỞ' : 'ĐÃ ĐÓNG'}
-                                    </td>
-                                </tr>
+                                {periodsData.map((period) => (
+                                    <tr key={period.id}>
+                                        <td>{period.semester_name || period.semester}</td>
+                                        <td>{period.period_type === 'register_program' ? 'Đăng ký Học phần' : 'Đăng ký Lớp học'}</td>
+                                        <td>{new Date(period.start_date).toLocaleString('vi-VN')}</td>
+                                        <td>{new Date(period.end_date).toLocaleString('vi-VN')}</td>
+                                        <td className="status-cell" style={{ fontWeight: 'bold', color: period.is_active === 1 ? '#4CAF50' : '#f44336' }}>
+                                            {period.is_active === 1 ? 'ĐANG DIỄN RA' : 'ĐÃ KẾT THÚC'}
+                                        </td>
+                                        <td>
+                                            <button className="delete-btn" onClick={() => handleDeleteRegistrationPeriod(period.id)}>Xoá</button>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
-                    ) : null}
+                    ) : (
+                        <p style={{ textAlign: 'center', color: '#666' }}>Chưa có đợt đăng ký nào được thiết lập.</p>
+                    )}
                 </section>
 
                 <section className="action-bar card">

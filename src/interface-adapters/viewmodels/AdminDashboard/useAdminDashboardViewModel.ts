@@ -1,4 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+import { SemesterRepositoryImpl } from '../../../infrastructure/repositories/SemesterRepositoryImpl';
+import { AcademicPeriodRepositoryImpl } from '../../../infrastructure/repositories/AcademicPeriodRepositoryImpl';
+import { GetAllSemestersUseCase } from '../../../application/use-cases/GetAllSemestersUseCase';
+import { GetAllAcademicPeriodsUseCase } from '../../../application/use-cases/GetAllAcademicPeriodsUseCase';
+import { SaveAcademicPeriodUseCase } from '../../../application/use-cases/SaveAcademicPeriodUseCase';
+import { DeleteAcademicPeriodUseCase } from '../../../application/use-cases/DeleteAcademicPeriodUseCase';
+import { SemesterController } from '../../controllers/SemesterController';
+import { AcademicPeriodController } from '../../controllers/AcademicPeriodController';
+import { AcademicPeriodDTO } from '../../../application/dto/AcademicPeriodDTO';
+import { SemesterDTO } from '../../../application/dto/SemesterDTO';
+
 
 export interface ClassInfo {
     ky: string;
@@ -134,35 +146,48 @@ export const useAdminDashboardViewModel = (
     const departmentOptions = Object.keys(majorMapping);
     const majorOptions = department ? majorMapping[department] ?? [] : [];
 
-    // --- MỚI THÊM: Quản lý giai đoạn đăng ký ---
-    const [regPeriodType, setRegPeriodType] = useState<'module' | 'class' | 'none'>('module');
+    
+    const [regPeriodType, setRegPeriodType] = useState<'register_program' | 'register_class'>('register_program');
     const [regPeriodStart, setRegPeriodStart] = useState<string>('');
     const [regPeriodEnd, setRegPeriodEnd] = useState<string>('');
-    const [savedRegPeriod, setSavedRegPeriod] = useState<any>(null);
-    const [isEditingPeriod, setIsEditingPeriod] = useState<boolean>(true);
+    const [selectedSemester, setSelectedSemester] = useState<number | ''>('');
+    const [isEditingPeriod, setIsEditingPeriod] = useState<boolean>(false);
+    
+    const [periodsData, setPeriodsData] = useState<AcademicPeriodDTO[]>([]);
+    const [semestersData, setSemestersData] = useState<SemesterDTO[]>([]);
 
-    // Khôi phục giá trị từ localStorage khi component mount
-    React.useEffect(() => {
-        const savedData = localStorage.getItem('REGISTRATION_PERIOD');
-        if (savedData) {
-            try {
-                const parsed = JSON.parse(savedData);
-                if (parsed && parsed.type !== 'none') {
-                    setSavedRegPeriod(parsed);
-                    setRegPeriodType(parsed.type);
-                    setRegPeriodStart(parsed.startTime);
-                    setRegPeriodEnd(parsed.endTime);
-                    setIsEditingPeriod(false);
-                }
-            } catch (error) {
-                console.error("Lỗi khi đọc REGISTRATION_PERIOD từ localStorage", error);
+    const semesterRepo = new SemesterRepositoryImpl();
+    const semesterUseCase = new GetAllSemestersUseCase(semesterRepo);
+    const semesterController = new SemesterController(semesterUseCase);
+
+    const periodRepo = new AcademicPeriodRepositoryImpl();
+    const getAllPeriodsUseCase = new GetAllAcademicPeriodsUseCase(periodRepo);
+    const savePeriodUseCase = new SaveAcademicPeriodUseCase(periodRepo);
+    const deletePeriodUseCase = new DeleteAcademicPeriodUseCase(periodRepo);
+    const periodController = new AcademicPeriodController(getAllPeriodsUseCase, savePeriodUseCase, deletePeriodUseCase);
+
+    const loadData = async () => {
+        try {
+            const sData = await semesterController.getAllSemesters();
+            setSemestersData(sData);
+            if (sData.length > 0 && selectedSemester === '') {
+                setSelectedSemester(sData[0].id);
             }
+
+            const pData = await periodController.getAll();
+            setPeriodsData(pData);
+        } catch (error) {
+            console.error("Failed to load registration periods data", error);
         }
+    };
+
+    useEffect(() => {
+        loadData();
     }, []);
 
-    const handleSaveRegistrationPeriod = () => {
-        if (!regPeriodStart || !regPeriodEnd) {
-            window.alert('Vui lòng chọn đầy đủ thời gian bắt đầu và kết thúc!');
+    const handleSaveRegistrationPeriod = async () => {
+        if (!selectedSemester || !regPeriodStart || !regPeriodEnd) {
+            window.alert('Vui lòng chọn đầy đủ kỳ học và thời gian bắt đầu, kết thúc!');
             return;
         }
 
@@ -171,33 +196,38 @@ export const useAdminDashboardViewModel = (
             return;
         }
 
-        const dataToSave = {
-            type: regPeriodType,
-            startTime: regPeriodStart,
-            endTime: regPeriodEnd
-        };
-        localStorage.setItem('REGISTRATION_PERIOD', JSON.stringify(dataToSave));
-        setSavedRegPeriod(dataToSave);
-        setIsEditingPeriod(false);
-        window.alert('Lưu cấu hình Giai đoạn đăng ký thành công!');
-    };
-
-    const handleDeleteRegistrationPeriod = () => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa thiết lập đợt đăng ký này?')) {
-            const dataToSave = { type: 'none', startTime: '', endTime: '' };
-            localStorage.setItem('REGISTRATION_PERIOD', JSON.stringify(dataToSave));
-            setSavedRegPeriod(null);
-            setIsEditingPeriod(true);
-            setRegPeriodType('module');
+        try {
+            await periodController.save({
+                semester: selectedSemester as number,
+                period_type: regPeriodType,
+                start_date: regPeriodStart,
+                end_date: regPeriodEnd
+            });
+            window.alert('Lưu cấu hình Giai đoạn đăng ký thành công!');
+            setIsEditingPeriod(false);
             setRegPeriodStart('');
             setRegPeriodEnd('');
+            loadData();
+        } catch (error: any) {
+            window.alert(error.message || 'Có lỗi xảy ra.');
+        }
+    };
+
+    const handleDeleteRegistrationPeriod = async (id: number) => {
+        if (window.confirm('Bạn có chắc chắn muốn xóa thiết lập đợt đăng ký này?')) {
+            try {
+                await periodController.delete(id);
+                loadData();
+            } catch (error: any) {
+                window.alert(error.message || 'Xoá thất bại.');
+            }
         }
     };
 
     const handleEditRegistrationPeriod = () => {
         setIsEditingPeriod(true);
     };
-    // ---------------------------------------------
+
 
     return {
         isProfileOpen,
@@ -233,9 +263,13 @@ export const useAdminDashboardViewModel = (
         setRegPeriodStart,
         regPeriodEnd,
         setRegPeriodEnd,
+        selectedSemester,
+        setSelectedSemester,
+        semestersData,
+        periodsData,
         handleSaveRegistrationPeriod,
-        savedRegPeriod,
         isEditingPeriod,
+        setIsEditingPeriod,
         handleEditRegistrationPeriod,
         handleDeleteRegistrationPeriod,
     };

@@ -1,4 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+import { AcademicPeriodRepositoryImpl } from '../../../infrastructure/repositories/AcademicPeriodRepositoryImpl';
+import { GetAllAcademicPeriodsUseCase } from '../../../application/use-cases/GetAllAcademicPeriodsUseCase';
+import { AcademicPeriodController } from '../../controllers/AcademicPeriodController';
+
 
 export interface RegisteredSubject {
     id: string;
@@ -23,7 +28,7 @@ export const useStudentDashboardViewModel = (onLogout: () => void) => {
         { id: '1', code: 'IT3040', name: 'Kỹ thuật phần mềm', status: 'Thành công', credits: 3 },
         { id: '2', code: 'IT3020', name: 'Toán rời rạc', status: 'Thành công', credits: 3 },
     ]);
-    const [currentRegPeriodType, setCurrentRegPeriodType] = useState<'module' | 'class' | 'none'>('none');
+    const [currentRegPeriodType, setCurrentRegPeriodType] = useState<'register_program' | 'register_class' | 'none'>('none');
 
     // Danh sách học phần được phép đăng ký (Mock)
     const allowedSubjects = React.useMemo(() => [
@@ -51,38 +56,39 @@ export const useStudentDashboardViewModel = (onLogout: () => void) => {
         setIsSuggestionVisible(true);
     };
 
-    // Kiểm tra thời gian đăng ký hiện tại
-    React.useEffect(() => {
-        const checkRegistrationPeriod = () => {
-            const savedData = localStorage.getItem('REGISTRATION_PERIOD');
-            if (savedData) {
-                try {
-                    const parsed = JSON.parse(savedData);
-                    if (parsed.type === 'none') {
-                        setCurrentRegPeriodType('none');
-                        return;
-                    }
-
+        // Kiểm tra thời gian đăng ký hiện tại
+    useEffect(() => {
+        const checkRegistrationPeriod = async () => {
+            try {
+                // Initialize Controller manually since we don't have DI
+                const periodRepo = new AcademicPeriodRepositoryImpl();
+                const getAllPeriodsUseCase = new GetAllAcademicPeriodsUseCase(periodRepo);
+                // We pass dummy use cases for save and delete since we don't use them here
+                const periodController = new AcademicPeriodController(getAllPeriodsUseCase, null as any, null as any);
+                
+                const periods = await periodController.getAll();
+                const activePeriod = periods.find(p => p.is_active === 1);
+                
+                if (activePeriod) {
                     const now = new Date();
-                    const start = new Date(parsed.startTime);
-                    const end = new Date(parsed.endTime);
-
+                    const start = new Date(activePeriod.start_date);
+                    const end = new Date(activePeriod.end_date);
+                    
                     if (now >= start && now <= end) {
-                        setCurrentRegPeriodType(parsed.type);
+                        setCurrentRegPeriodType(activePeriod.period_type as 'register_program' | 'register_class');
                     } else {
                         setCurrentRegPeriodType('none');
                     }
-                } catch (error) {
-                    console.error("Lỗi khi đọc REGISTRATION_PERIOD từ localStorage", error);
+                } else {
                     setCurrentRegPeriodType('none');
                 }
-            } else {
+            } catch (error) {
+                console.error("Lỗi khi kiểm tra đợt đăng ký từ server", error);
                 setCurrentRegPeriodType('none');
             }
         };
 
         checkRegistrationPeriod();
-        // Cập nhật lại mỗi 1 phút phòng khi hết hạn lúc đang mở trang
         const interval = setInterval(checkRegistrationPeriod, 60000);
         return () => clearInterval(interval);
     }, []);

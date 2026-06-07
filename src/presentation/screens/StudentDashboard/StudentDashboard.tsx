@@ -69,7 +69,7 @@ export const StudentDashboard = () => {
                     <>
                         <div className="welcome-banner">
                             <h2 className="what-time-is-it">
-                                {currentRegPeriodType === 'module' 
+                                {currentRegPeriodType === 'register_program' 
                                     ? 'Đây đang là giai đoạn đăng ký học phần' 
                                     : 'Đây đang là giai đoạn đăng ký lớp học'}
                             </h2>
@@ -156,7 +156,7 @@ export const StudentDashboard = () => {
                             </div>
                         </section>
 
-                        {currentRegPeriodType === 'class' && (
+                        {currentRegPeriodType === 'register_class' && (
                             <section className="timetable-section card">
                                 <h3 className="section-title">Thời khóa biểu tạm thời</h3>
                                 <div className="table-scroll">
