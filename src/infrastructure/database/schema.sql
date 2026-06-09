@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS student_courses (
     student_id INTEGER,
     course_id INTEGER,
     semester INTEGER,
+    status TEXT DEFAULT 'registered',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(id),
     FOREIGN KEY (course_id) REFERENCES courses(id),

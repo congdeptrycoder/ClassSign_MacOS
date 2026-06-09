@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useLoginViewModel } from '../../../interface-adapters/viewmodels/Login/useLoginViewModel';
 import { useTheme } from '../../components/ThemeContext';
 import hustLogo from '../../../../public/images/hust-logo.png';
+import { Account } from '../../../domain/entities/Account';
+import { saveCurrentAccount } from '../../../shared/session/currentUserSession';
 import './LoginScreen.css';
 
 export const LoginScreen = () => {
@@ -10,8 +12,9 @@ export const LoginScreen = () => {
     const { isDark, toggleTheme } = useTheme();
     const [usernameInput, setUsernameInput] = useState('');
 
-    const onLoginSuccess = (role: string) => {
-        if (role === 'admin') {
+    const onLoginSuccess = (account: Account) => {
+        saveCurrentAccount(account);
+        if (account.role === 'admin') {
             navigate('/admin');
         } else {
             navigate('/student');

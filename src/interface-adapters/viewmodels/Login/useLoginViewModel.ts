@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { AccountRepositoryImpl } from '../../../infrastructure/repositories/AccountRepositoryImpl';
 import { LoginUseCase } from '../../../application/use-cases/LoginUseCase';
 import { LoginController } from '../../controllers/LoginController';
+import { Account } from '../../../domain/entities/Account';
 
-export const useLoginViewModel = (onLoginSuccess?: (role: string) => void) => {
+export const useLoginViewModel = (onLoginSuccess?: (account: Account) => void) => {
     const [password, setPassword] = useState('');
     const [usernameStatus, setUsernameStatus] = useState<'default' | 'success' | 'error'>('default');
     const [passwordStatus, setPasswordStatus] = useState<'default' | 'success' | 'error'>('default');
@@ -24,8 +25,6 @@ export const useLoginViewModel = (onLoginSuccess?: (role: string) => void) => {
         const result = await controller.login(currentUsername, password);
 
         if (result.success && result.account) {
-            const userRole = result.account.role;
-
             setUsernameStatus('success');
 
             setTimeout(() => {
@@ -33,7 +32,7 @@ export const useLoginViewModel = (onLoginSuccess?: (role: string) => void) => {
             }, 300);
 
             setTimeout(() => {
-                onLoginSuccess?.(userRole);
+                onLoginSuccess?.(result.account);
             }, 800);
 
         } else {

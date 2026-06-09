@@ -4,6 +4,7 @@ import { LoginScreen } from './presentation/screens/Login/LoginScreen'
 import { AdminDashboard } from './presentation/screens/AdminDashboard/AdminDashboard'
 import { AdminEditClass } from './presentation/screens/AdminEditClass/AdminEditClass'
 import { StudentDashboard } from './presentation/screens/StudentDashboard/StudentDashboard'
+import { Curriculum } from './presentation/screens/Curriculum/Curriculum'
 
 function App(): JSX.Element {
   return (
@@ -13,6 +14,7 @@ function App(): JSX.Element {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/edit" element={<AdminEditClass />} />
         <Route path="/student" element={<StudentDashboard />} />
+        <Route path="/student/curriculum" element={<Curriculum />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
