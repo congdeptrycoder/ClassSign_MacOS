@@ -22,6 +22,10 @@ export class ManageStudentRegistration {
     return this.repository.registerCourse(studentId, courseId);
   }
 
+  cancelCourseRegistration(studentId: number, courseId: number) {
+    return this.repository.cancelCourseRegistration(studentId, courseId);
+  }
+
   searchClassSuggestions(studentId: number, query: string) {
     if (!query.trim()) {
       return Promise.resolve([]);

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CurriculumCourse } from '../../../domain/entities/StudentRegistration';
 import { useCurriculumViewModel } from '../../../interface-adapters/viewmodels/Curriculum/useCurriculumViewModel';
 import { getCurrentAccount } from '../../../shared/session/currentUserSession';
+import { AlarmOneChoose } from '../../components/AlarmOneChoose/AlarmOneChoose';
 import '../StudentDashboard/StudentDashboard.css';
 import './Curriculum.css';
 
@@ -14,15 +15,23 @@ export const Curriculum = () => {
     isLoading,
     error,
     registeringCourseId,
+    alarmMessage,
+    setAlarmMessage,
     handleRegisterCourse,
   } = useCurriculumViewModel(account?.id ?? 1);
+
+  const [searchQuery, setSearchQuery] = useState('');
+
   const totalCourses = curriculum?.courses.length ?? 0;
-  const completedCourses = curriculum?.courses.filter(course => course.hasStudied).length ?? 0;
+  const completedCourses = curriculum?.courses.filter(course => course.status === 'completed').length ?? 0;
   const registeredCourses = curriculum?.courses.filter(course => course.status === 'registered').length ?? 0;
-  const availableCourses = curriculum?.courses.filter(course => course.status === 'available').length ?? 0;
+
+  const filteredCourses = curriculum?.courses.filter(course =>
+    course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    course.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
   const renderAction = (course: CurriculumCourse) => {
-    if (!course.canRegister) return <span className="muted-text">-</span>;
 
     return (
       <button
@@ -37,6 +46,13 @@ export const Curriculum = () => {
 
   return (
     <div className="student-container">
+      {alarmMessage && (
+        <AlarmOneChoose
+          message={alarmMessage}
+          buttonText="Đóng"
+          onClose={() => setAlarmMessage(null)}
+        />
+      )}
       <header className="curriculum-header">
         <button className="secondary-btn back-nav-btn" onClick={() => navigate('/student')}>
           Quay lại
@@ -48,7 +64,6 @@ export const Curriculum = () => {
               ? `${curriculum.program.code} - ${curriculum.program.name}`
               : 'Danh sách học phần'}
           </h1>
-          <p>{curriculum?.student.name ?? account?.name ?? 'Sinh viên'}</p>
         </div>
       </header>
 
@@ -69,18 +84,23 @@ export const Curriculum = () => {
                 <span>Tổng học phần</span>
                 <strong>{totalCourses}</strong>
               </div>
-              <div>
-                <span>Đã học</span>
+              <div style={{ backgroundColor: '#708238', color: '#fff', padding: '10px', borderRadius: '8px' }}>
+                <span>Đã học xong</span>
                 <strong>{completedCourses}</strong>
               </div>
-              <div>
-                <span>Đã đăng ký</span>
+              <div style={{ backgroundColor: '#C49102', color: '#fff', padding: '10px', borderRadius: '8px' }}>
+                <span>Đã đăng ký, chưa học xong</span>
                 <strong>{registeredCourses}</strong>
               </div>
-              <div>
-                <span>Có thể đăng ký</span>
-                <strong>{availableCourses}</strong>
-              </div>
+            </div>
+            <div className="panel-header" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+              <input
+                className="search-input"
+                placeholder="Tìm theo Mã HP hoặc Tên học phần"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ width: '100%', maxWidth: '400px' }}
+              />
             </div>
             <h3 className="section-title">
               {curriculum.student.name} - {curriculum.student.id_card ?? curriculum.student.username}
@@ -94,23 +114,23 @@ export const Curriculum = () => {
                     <th>TC</th>
                     <th>Tiên quyết</th>
                     <th>Song hành</th>
-                    <th>Đã học</th>
                     <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {curriculum.courses.map(course => (
-                    <tr key={course.curriculumId}>
-                      <td><span className="course-code">{course.code}</span></td>
+                  {filteredCourses.map(course => (
+                    <tr
+                      key={course.curriculumId}
+                      style={{
+                        backgroundColor: course.status === 'completed' ? '#708238' : course.status === 'registered' ? '#C49102' : undefined,
+                        color: (course.status === 'completed' || course.status === 'registered') ? '#fff' : undefined,
+                      }}
+                    >
+                      <td><span className="course-code" style={{ color: (course.status === 'completed' || course.status === 'registered') ? '#fff' : undefined }}>{course.code}</span></td>
                       <td>{course.name}</td>
                       <td>{course.credits}</td>
                       <td>{course.prerequisiteCode ?? '-'}</td>
                       <td>{course.parallelCode ?? '-'}</td>
-                      <td>
-                        <span className={`table-status ${course.hasStudied ? 'status-completed' : 'status-unlearned'}`}>
-                          {course.studyStatusLabel}
-                        </span>
-                      </td>
                       <td>{renderAction(course)}</td>
                     </tr>
                   ))}

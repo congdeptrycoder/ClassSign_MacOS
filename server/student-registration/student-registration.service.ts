@@ -163,9 +163,9 @@ export async function getRegisteredCourses(studentId: number) {
 function getCourseStatusLabel(status: string) {
   switch (status) {
     case 'completed':
-      return 'Đã học';
+      return 'Đã học xong. Có thể học lại';
     case 'registered':
-      return 'Đã đăng ký';
+      return 'Đã từng đăng ký, chưa học xong';
     case 'blocked':
       return 'Chưa đủ điều kiện';
     default:
@@ -294,8 +294,8 @@ export async function registerCourse(
   const course = input.courseId
     ? await dbGet<any>('SELECT * FROM courses WHERE id = ?', [input.courseId])
     : await dbGet<any>('SELECT * FROM courses WHERE course_code = ?', [
-        input.courseCode,
-      ]);
+      input.courseCode,
+    ]);
 
   if (!course) {
     throw new Error('Học phần không tồn tại.');
@@ -309,44 +309,97 @@ export async function registerCourse(
     throw new Error('Học phần không thuộc chương trình đào tạo của sinh viên.');
   }
 
-  if (!curriculumCourse.canRegister) {
-    throw new Error(
-      curriculumCourse.blockingReason ||
-        `Học phần đang ở trạng thái: ${curriculumCourse.statusLabel}.`
-    );
-  }
 
-  const existing = await dbGet<{ id: number; status: string }>(
+
+  const existingInSemester = await dbGet<{ id: number }>(
     `
-      SELECT id, status
+      SELECT id
       FROM student_courses
       WHERE student_id = ?
         AND course_id = ?
-        AND COALESCE(status, 'registered') IN ('registered', 'completed')
+        AND semester = ?
+      LIMIT 1
+    `,
+    [studentId, course.id, activePeriod.semester]
+  );
+
+  if (existingInSemester) {
+    throw new Error('Bạn đã đăng ký thành công trước đó');
+  }
+
+  const existingRegisteredOtherSemester = await dbGet<{ id: number }>(
+    `
+      SELECT id
+      FROM student_courses
+      WHERE student_id = ?
+        AND course_id = ?
+        AND status = 'registered'
       LIMIT 1
     `,
     [studentId, course.id]
   );
 
-  if (existing?.status === 'completed') {
-    throw new Error('Học phần này đã học xong.');
-  }
+  const existingCompleted = await dbGet<{ id: number }>(
+    `
+      SELECT id
+      FROM student_courses
+      WHERE student_id = ?
+        AND course_id = ?
+        AND status = 'completed'
+      LIMIT 1
+    `,
+    [studentId, course.id]
+  );
 
-  if (existing) {
-    throw new Error('Học phần này đã được đăng ký.');
+  let newStatus = 'registered';
+  let message = 'Đăng ký thành công';
+
+  if (existingCompleted) {
+    newStatus = 're_registered';
+    message = 'Đăng ký thành công. Học phần này đã từng được học, bạn đang đăng ký học lại.';
+  } else if (existingRegisteredOtherSemester) {
+    newStatus = 'registered';
+    message = 'Đăng ký thành công. Học phần này đã từng được đăng ký nhưng chưa học xong.';
   }
 
   const result = await dbRun(
     `
       INSERT INTO student_courses (student_id, course_id, semester, status)
-      VALUES (?, ?, ?, 'registered')
+      VALUES (?, ?, ?, ?)
     `,
-    [studentId, course.id, activePeriod.semester]
+    [studentId, course.id, activePeriod.semester, newStatus]
   );
 
-  return (await getRegisteredCourses(studentId)).find(
+  const registeredCourse = (await getRegisteredCourses(studentId)).find(
     (item: any) => item.id === result.lastID
   );
+
+  return {
+    course: registeredCourse,
+    message
+  };
+}
+
+export async function removeCourseRegistration(studentId: number, courseId: number) {
+  await ensureStudentRecord(studentId);
+  const activePeriod = await getActiveRegistrationPeriod('register_program');
+  if (!activePeriod) {
+    throw new Error('Hiện không trong giai đoạn đăng ký học phần.');
+  }
+
+  const result = await dbRun(
+    `
+      DELETE FROM student_courses
+      WHERE student_id = ?
+        AND course_id = ?
+        AND semester = ?
+    `,
+    [studentId, courseId, activePeriod.semester]
+  );
+
+  if (result.changes === 0) {
+    throw new Error('Không tìm thấy đăng ký học phần này trong học kỳ hiện tại.');
+  }
 }
 
 export async function searchClassSuggestions(

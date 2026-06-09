@@ -7,6 +7,8 @@ import {
     getCurrentAccount,
 } from '../../../shared/session/currentUserSession';
 import hustLogo from '../../../../public/images/hust-logo.png';
+import { AlarmOneChoose } from '../../components/AlarmOneChoose/AlarmOneChoose';
+import { AlarmTwoChoose } from '../../components/AlarmTwoChoose/AlarmTwoChoose';
 import './StudentDashboard.css';
 
 const daysOfWeek = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -40,6 +42,14 @@ export const StudentDashboard = () => {
         timeGridEvents,
         currentRegPeriodType,
         isSubmitting,
+        alarmMessage,
+        setAlarmMessage,
+        courseIdToDelete,
+        promptDeleteCourse,
+        cancelDeleteCourse,
+        confirmDeleteCourse,
+        activeSemesterId,
+        activeSemesterName,
     } = useStudentDashboardViewModel(onLogout, account?.id ?? 1, onViewCurriculum);
 
     const { isDark, toggleTheme } = useTheme();
@@ -57,14 +67,34 @@ export const StudentDashboard = () => {
         ? 'Tìm học phần'
         : 'Tìm lớp học phần';
 
-    const getRegisteredStatusClass = (status: string) => {
-        if (status.includes('Thành công') || status.includes('Đã đăng ký')) return 'registered';
-        if (status.includes('Đã học')) return 'completed';
+    const getRegisteredStatusClass = (rawStatus: string) => {
+        if (rawStatus === 'registered' || rawStatus === 're_registered') return 'registered';
+        if (rawStatus === 'completed') return 'completed';
         return 'available';
     };
 
+    const displayedSubjects = activeSemesterId
+        ? registeredSubjects.filter(item => item.semester === activeSemesterId)
+        : [];
+
     return (
         <div className="student-container">
+            {alarmMessage && (
+                <AlarmOneChoose
+                    message={alarmMessage}
+                    buttonText="Đóng"
+                    onClose={() => setAlarmMessage(null)}
+                />
+            )}
+            {courseIdToDelete && (
+                <AlarmTwoChoose
+                    message="Xác nhận xoá đăng ký học phần này"
+                    button1Text="Huỷ"
+                    button2Text="Xác nhận"
+                    onButton1Click={cancelDeleteCourse}
+                    onButton2Click={confirmDeleteCourse}
+                />
+            )}
             <header className="nav-bar">
                 <div className="nav-left">
                     <img src={hustLogo} alt="Logo" className="nav-logo" />
@@ -91,7 +121,10 @@ export const StudentDashboard = () => {
                 <section className="student-page-head">
                     <div>
                         <p className="page-kicker">Hệ thống đăng ký học tập</p>
-                        <h1>{phaseTitle}</h1>
+                        <h1>
+                            {phaseTitle} 
+                            {activeSemesterName && ` - Học kỳ ${activeSemesterName}`}
+                        </h1>
                     </div>
                     <span className={`phase-badge ${isRegistrationOpen ? 'open' : 'closed'}`}>
                         {phaseBadge}
@@ -124,8 +157,11 @@ export const StudentDashboard = () => {
                                     onFocus={() => setIsSuggestionVisible(true)}
                                     onBlur={() => setTimeout(() => setIsSuggestionVisible(false), 200)}
                                 />
-                                {isSuggestionVisible && (
-                                    <div className="suggestions-dropdown">
+                                {isSuggestionVisible && searchQuery.trim() && (
+                                    <div 
+                                        className="suggestions-dropdown"
+                                        onMouseDown={(e) => e.preventDefault()}
+                                    >
                                         {isSearching && (
                                             <div className="suggestion-state">Đang tìm...</div>
                                         )}
@@ -189,25 +225,35 @@ export const StudentDashboard = () => {
                                     <th>Tên học phần</th>
                                     <th>TT đăng ký</th>
                                     <th>Số TC</th>
+                                    <th>Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {registeredSubjects.map((item) => (
+                                {displayedSubjects.map((item) => (
                                     <tr key={item.id}>
                                         <td>{item.id}</td>
                                         <td><span className="course-code">{item.code}</span></td>
                                         <td>{item.name}</td>
                                         <td>
-                                            <span className={`table-status status-${getRegisteredStatusClass(item.status)}`}>
+                                            <span className={`table-status status-${getRegisteredStatusClass(item.rawStatus)}`}>
                                                 {item.status}
                                             </span>
                                         </td>
                                         <td>{item.credits}</td>
+                                        <td>
+                                            <button 
+                                                className="outline-btn" 
+                                                onClick={() => promptDeleteCourse(item.courseId)}
+                                                disabled={isSubmitting}
+                                            >
+                                                Xoá
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
-                                {registeredSubjects.length === 0 && (
+                                {displayedSubjects.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="empty-table-cell">
+                                        <td colSpan={6} className="empty-table-cell">
                                             Chưa có học phần đăng ký
                                         </td>
                                     </tr>

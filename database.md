@@ -96,6 +96,7 @@ Bảng student_courses: Bảng đăng ký học phần
 - student_id: INTEGER (FOREIGN KEY to students)
 - course_id: INTEGER (FOREIGN KEY to courses)
 - semester: INTEGER (FOREIGN KEY to semesters)
+- status: TEXT (registered: Đã đăng ký, chưa học xong; completed: Đã học xong - Cập nhật khi đăng ký lớp kết thúc; re_registered: Đã học xong nhưng đăng ký lại)
 - created_at: TEXT (DATETIME)
 
 Bảng student_class_registrations: Bảng đăng ký lớp học phần

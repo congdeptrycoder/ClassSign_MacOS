@@ -6,6 +6,7 @@ import {
   getTimetable,
   registerClassSection,
   registerCourse,
+  removeCourseRegistration,
   searchClassSuggestions,
   searchCourseSuggestions,
 } from './student-registration.service';
@@ -61,14 +62,28 @@ export async function getCourseSuggestions(req: Request, res: Response) {
 
 export async function createCourseRegistration(req: Request, res: Response) {
   try {
+    const result = await registerCourse(parseStudentId(req), req.body);
     return sendSuccess(
       res,
-      await registerCourse(parseStudentId(req), req.body),
-      'Đăng ký học phần thành công.'
+      result
     );
   } catch (err) {
     console.error('createCourseRegistration error:', err);
     return handleRouteError(res, err, 'Không thể đăng ký học phần.');
+  }
+}
+
+export async function deleteCourseRegistration(req: Request, res: Response) {
+  try {
+    const courseId = Number(req.params.courseId);
+    if (!Number.isInteger(courseId)) {
+      throw new Error('Mã học phần không hợp lệ.');
+    }
+    await removeCourseRegistration(parseStudentId(req), courseId);
+    return sendSuccess(res, null, 'Xoá đăng ký học phần thành công.');
+  } catch (err) {
+    console.error('deleteCourseRegistration error:', err);
+    return handleRouteError(res, err, 'Không thể xoá đăng ký học phần.');
   }
 }
 

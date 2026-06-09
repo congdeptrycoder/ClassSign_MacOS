@@ -12,8 +12,11 @@ import { AcademicPeriodController } from '../../controllers/AcademicPeriodContro
 
 export interface RegisteredSubject {
     id: string;
+    courseId: number;
+    semester: number;
     code: string;
     name: string;
+    rawStatus: string;
     status: string;
     credits: number;
 }
@@ -32,7 +35,8 @@ const registrationUseCase = new ManageStudentRegistration(
 
 function toStatusLabel(status: string) {
     if (status === 'completed') return 'Đã học';
-    if (status === 'registered') return 'Thành công';
+    if (status === 'registered') return 'Học phần chưa hoàn thành';
+    if (status === 're_registered') return 'Học cải thiện';
     if (status === 'cancelled') return 'Đã hủy';
     return status;
 }
@@ -81,6 +85,10 @@ export const useStudentDashboardViewModel = (
         'register_program' | 'register_class' | 'none'
     >('none');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [alarmMessage, setAlarmMessage] = useState<string | null>(null);
+    const [courseIdToDelete, setCourseIdToDelete] = useState<number | null>(null);
+    const [activeSemesterId, setActiveSemesterId] = useState<number | null>(null);
+    const [activeSemesterName, setActiveSemesterName] = useState<number | null>(null);
 
     const reloadStudentData = async () => {
         const [registeredCourses, timetable] = await Promise.all([
@@ -91,9 +99,12 @@ export const useStudentDashboardViewModel = (
         setRegisteredSubjects(
             registeredCourses.map(course => ({
                 id: String(course.id),
+                courseId: course.courseId,
+                semester: course.semester,
                 code: course.code,
                 name: course.name,
                 credits: course.credits,
+                rawStatus: course.status,
                 status: toStatusLabel(course.status),
             }))
         );
@@ -131,6 +142,9 @@ export const useStudentDashboardViewModel = (
                     const start = new Date(activePeriod.start_date);
                     const end = new Date(activePeriod.end_date);
 
+                    setActiveSemesterId(activePeriod.semester);
+                    setActiveSemesterName(activePeriod.semester_name);
+
                     if (now >= start && now <= end) {
                         setCurrentRegPeriodType(
                             activePeriod.period_type as 'register_program' | 'register_class'
@@ -140,6 +154,8 @@ export const useStudentDashboardViewModel = (
                     }
                 } else {
                     setCurrentRegPeriodType('none');
+                    setActiveSemesterId(null);
+                    setActiveSemesterName(null);
                 }
             } catch (error) {
                 console.error('Lỗi khi kiểm tra đợt đăng ký từ server', error);
@@ -239,17 +255,17 @@ export const useStudentDashboardViewModel = (
         try {
             setIsSubmitting(true);
             if (currentRegPeriodType === 'register_program') {
-                await registrationUseCase.registerCourse(
+                const result = await registrationUseCase.registerCourse(
                     studentId,
                     (registerTarget as CurriculumCourse).courseId
                 );
-                window.alert(`Đã đăng ký học phần ${registerTarget.code}.`);
+                setAlarmMessage(result.message);
             } else {
                 await registrationUseCase.registerClass(
                     studentId,
                     (registerTarget as ClassSuggestion).id
                 );
-                window.alert(`Đã đăng ký lớp học phần ${registerTarget.code}.`);
+                setAlarmMessage(`Đã đăng ký lớp học phần ${registerTarget.code}.`);
             }
 
             setSearchQuery('');
@@ -258,9 +274,32 @@ export const useStudentDashboardViewModel = (
             setSelectedSuggestion(null);
             await reloadStudentData();
         } catch (error: any) {
-            window.alert(error.message || 'Đăng ký thất bại.');
+            setAlarmMessage(error.message || 'Đăng ký thất bại.');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const promptDeleteCourse = (courseId: number) => {
+        setCourseIdToDelete(courseId);
+    };
+
+    const cancelDeleteCourse = () => {
+        setCourseIdToDelete(null);
+    };
+
+    const confirmDeleteCourse = async () => {
+        if (!courseIdToDelete) return;
+        try {
+            setIsSubmitting(true);
+            await registrationUseCase.cancelCourseRegistration(studentId, courseIdToDelete);
+            await reloadStudentData();
+            setAlarmMessage('Xoá đăng ký học phần thành công.');
+        } catch (error: any) {
+            setAlarmMessage(error.message || 'Xoá thất bại.');
+        } finally {
+            setIsSubmitting(false);
+            setCourseIdToDelete(null);
         }
     };
 
@@ -282,5 +321,13 @@ export const useStudentDashboardViewModel = (
         timeGridEvents,
         currentRegPeriodType,
         isSubmitting,
+        alarmMessage,
+        setAlarmMessage,
+        courseIdToDelete,
+        promptDeleteCourse,
+        cancelDeleteCourse,
+        confirmDeleteCourse,
+        activeSemesterId,
+        activeSemesterName,
     };
 };

@@ -15,6 +15,7 @@ export const useCurriculumViewModel = (studentId: number) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registeringCourseId, setRegisteringCourseId] = useState<number | null>(null);
+  const [alarmMessage, setAlarmMessage] = useState<string | null>(null);
 
   const loadCurriculum = async () => {
     try {
@@ -33,18 +34,13 @@ export const useCurriculumViewModel = (studentId: number) => {
   }, [studentId]);
 
   const handleRegisterCourse = async (course: CurriculumCourse) => {
-    if (!course.canRegister) {
-      window.alert(course.blockingReason || 'Học phần chưa đủ điều kiện đăng ký.');
-      return;
-    }
-
     try {
       setRegisteringCourseId(course.courseId);
       await registrationUseCase.registerCourse(studentId, course.courseId);
-      window.alert(`Đã đăng ký học phần ${course.code}.`);
+      setAlarmMessage(`Đã đăng ký học phần ${course.code}.`);
       await loadCurriculum();
     } catch (err: any) {
-      window.alert(err.message || 'Đăng ký học phần thất bại.');
+      setAlarmMessage(err.message || 'Đăng ký học phần thất bại.');
     } finally {
       setRegisteringCourseId(null);
     }
@@ -55,6 +51,8 @@ export const useCurriculumViewModel = (studentId: number) => {
     isLoading,
     error,
     registeringCourseId,
+    alarmMessage,
+    setAlarmMessage,
     reload: loadCurriculum,
     handleRegisterCourse,
   };

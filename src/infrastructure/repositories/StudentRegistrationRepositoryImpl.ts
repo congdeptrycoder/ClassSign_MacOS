@@ -30,11 +30,15 @@ export class StudentRegistrationRepositoryImpl
     );
   }
 
-  registerCourse(studentId: number, courseId: number): Promise<RegisteredCourse> {
-    return apiClient.post<RegisteredCourse>(
+  registerCourse(studentId: number, courseId: number): Promise<{ course: RegisteredCourse; message: string }> {
+    return apiClient.post<{ course: RegisteredCourse; message: string }>(
       `/students/${studentId}/course-registrations`,
       { courseId }
     );
+  }
+
+  cancelCourseRegistration(studentId: number, courseId: number): Promise<void> {
+    return apiClient.delete<void>(`/students/${studentId}/course-registrations/${courseId}`);
   }
 
   searchClassSuggestions(
