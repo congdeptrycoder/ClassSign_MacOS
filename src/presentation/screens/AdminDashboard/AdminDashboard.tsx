@@ -168,6 +168,7 @@ export const AdminDashboard = () => {
                                             {period.is_active === 1 ? 'ĐANG DIỄN RA' : 'ĐÃ KẾT THÚC'}
                                         </td>
                                         <td>
+                                            <button className="primary-btn" onClick={() => navigate('/admin/program-registration-details', { state: { semester: period.semester } })} style={{ marginRight: '8px' }}>Xem chi tiết</button>
                                             <button className="delete-btn" onClick={() => handleDeleteRegistrationPeriod(period.id)}>Xoá</button>
                                         </td>
                                     </tr>
