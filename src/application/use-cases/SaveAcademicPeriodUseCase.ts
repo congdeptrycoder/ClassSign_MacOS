@@ -9,7 +9,8 @@ export class SaveAcademicPeriodUseCase {
             input.semester,
             input.period_type,
             input.start_date,
-            input.end_date
+            input.end_date,
+            input.id
         );
     }
 }

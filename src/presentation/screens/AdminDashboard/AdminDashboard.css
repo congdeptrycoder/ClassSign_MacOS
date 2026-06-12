@@ -199,6 +199,28 @@
   color: white;
 }
 
+.detail-btn {
+  background-color: #2196F3;
+  color: white;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.edit-btn-yellow {
+  background-color: #FFC107;
+  color: black;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
 /* Modal styles */
 .modal-overlay {
   position: fixed;

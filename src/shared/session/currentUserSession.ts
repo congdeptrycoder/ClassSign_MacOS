@@ -17,7 +17,8 @@ export function getCurrentAccount(): Account | null {
       parsed.username,
       parsed.name,
       parsed.role,
-      parsed.id_card
+      parsed.id_card,
+      parsed.status
     );
   } catch (_err) {
     window.localStorage.removeItem(STORAGE_KEY);

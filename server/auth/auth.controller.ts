@@ -10,9 +10,10 @@ export const login = (req: Request, res: Response) => {
   }
 
   const query = `
-    SELECT id, username, name, role, id_card, is_active
-    FROM accounts
-    WHERE username = ? AND password = ?
+    SELECT a.id, a.username, a.name, a.role, a.id_card, a.is_active, s.status
+    FROM accounts a
+    LEFT JOIN students s ON a.id = s.id
+    WHERE a.username = ? AND a.password = ?
   `;
 
   db.get(query, [username, password], (err, row: any) => {
@@ -36,6 +37,7 @@ export const login = (req: Request, res: Response) => {
         name: row.name,
         role: row.role,
         id_card: row.id_card,
+        status: row.status,
       },
     });
   });

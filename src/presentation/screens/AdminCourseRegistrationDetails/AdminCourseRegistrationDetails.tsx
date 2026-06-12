@@ -105,20 +105,47 @@ export const AdminCourseRegistrationDetails = () => {
                                                 style={{ width: '100%', marginTop: '5px', padding: '4px', boxSizing: 'border-box' }}
                                             />
                                         </th>
+                                        <th>Số lượng lớp</th>
+                                        <th>Số lượng ĐK tối đa</th>
+                                        <th>Trạng thái</th>
+                                        <th>Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {stats.map((stat, idx) => (
-                                        <tr key={idx}>
-                                            <td>{stat.ma_hp}</td>
-                                            <td>{stat.ten_hp}</td>
-                                            <td>{stat.truong_khoa}</td>
-                                            <td>{stat.so_luong_dang_ky}</td>
-                                        </tr>
-                                    ))}
+                                    {stats.map((stat, idx) => {
+                                        let trangThai = "Đã đáp ứng đủ";
+                                        if (stat.so_luong_lop === 0) {
+                                            trangThai = "Chưa có lớp";
+                                        } else if (stat.so_luong_dk_toi_da < stat.so_luong_dang_ky) {
+                                            trangThai = "Chưa phục vụ đủ sinh viên";
+                                        }
+
+                                        return (
+                                            <tr key={idx}>
+                                                <td>{stat.ma_hp}</td>
+                                                <td>{stat.ten_hp}</td>
+                                                <td>{stat.truong_khoa}</td>
+                                                <td>{stat.so_luong_dang_ky}</td>
+                                                <td>{stat.so_luong_lop}</td>
+                                                <td>{stat.so_luong_dk_toi_da}</td>
+                                                <td>
+                                                    <span style={{
+                                                        color: trangThai === "Đã đáp ứng đủ" ? 'green' : '#ff4d4f',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {trangThai}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <button className="primary-btn" style={{ marginRight: '5px', fontSize: '12px', padding: '5px 10px' }} onClick={() => {}}>Mở lớp</button>
+                                                    <button className="secondary-btn" style={{ fontSize: '12px', padding: '5px 10px' }} onClick={() => {}}>Xem danh sách lớp</button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                     {stats.length === 0 && (
                                         <tr>
-                                            <td colSpan={4} style={{ textAlign: 'center' }}>Không có dữ liệu phù hợp</td>
+                                            <td colSpan={8} style={{ textAlign: 'center' }}>Không có dữ liệu phù hợp</td>
                                         </tr>
                                     )}
                                 </tbody>

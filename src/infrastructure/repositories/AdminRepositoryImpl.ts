@@ -7,10 +7,13 @@ export class AdminRepositoryImpl implements IAdminRepository {
         try {
             const data = await apiClient.get<CourseRegistrationStat[]>(`/admin/course-registration-stats?semester=${semester}`);
             return data.map(item => new CourseRegistrationStat(
+                item.course_id,
                 item.ma_hp,
                 item.ten_hp,
                 item.truong_khoa,
-                item.so_luong_dang_ky
+                item.so_luong_dang_ky,
+                item.so_luong_lop,
+                item.so_luong_dk_toi_da
             ));
         } catch (error: any) {
             console.error('AdminRepositoryImpl getCourseRegistrationStats error:', error);

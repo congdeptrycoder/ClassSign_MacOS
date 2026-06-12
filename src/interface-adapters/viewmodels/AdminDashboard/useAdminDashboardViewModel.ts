@@ -152,6 +152,7 @@ export const useAdminDashboardViewModel = (
     const [regPeriodEnd, setRegPeriodEnd] = useState<string>('');
     const [selectedSemester, setSelectedSemester] = useState<number | ''>('');
     const [isEditingPeriod, setIsEditingPeriod] = useState<boolean>(false);
+    const [editPeriodId, setEditPeriodId] = useState<number | null>(null);
     
     const [periodsData, setPeriodsData] = useState<AcademicPeriodDTO[]>([]);
     const [semestersData, setSemestersData] = useState<SemesterDTO[]>([]);
@@ -198,6 +199,7 @@ export const useAdminDashboardViewModel = (
 
         try {
             await periodController.save({
+                id: editPeriodId || undefined,
                 semester: selectedSemester as number,
                 period_type: regPeriodType,
                 start_date: regPeriodStart,
@@ -205,6 +207,7 @@ export const useAdminDashboardViewModel = (
             });
             window.alert('Lưu cấu hình Giai đoạn đăng ký thành công!');
             setIsEditingPeriod(false);
+            setEditPeriodId(null);
             setRegPeriodStart('');
             setRegPeriodEnd('');
             loadData();
@@ -224,7 +227,20 @@ export const useAdminDashboardViewModel = (
         }
     };
 
-    const handleEditRegistrationPeriod = () => {
+    const handleEditRegistrationPeriod = (period?: AcademicPeriodDTO) => {
+        if (period) {
+            setEditPeriodId(period.id);
+            setSelectedSemester(period.semester);
+            setRegPeriodType(period.period_type as any);
+            setRegPeriodStart(period.start_date.slice(0, 16)); // "YYYY-MM-DDTHH:mm" format expected by datetime-local
+            setRegPeriodEnd(period.end_date.slice(0, 16));
+        } else {
+            setEditPeriodId(null);
+            setSelectedSemester('');
+            setRegPeriodType('register_program');
+            setRegPeriodStart('');
+            setRegPeriodEnd('');
+        }
         setIsEditingPeriod(true);
     };
 
@@ -270,6 +286,8 @@ export const useAdminDashboardViewModel = (
         handleSaveRegistrationPeriod,
         isEditingPeriod,
         setIsEditingPeriod,
+        editPeriodId,
+        setEditPeriodId,
         handleEditRegistrationPeriod,
         handleDeleteRegistrationPeriod,
     };

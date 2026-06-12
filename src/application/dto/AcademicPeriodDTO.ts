@@ -9,6 +9,7 @@ export interface AcademicPeriodDTO {
 }
 
 export interface SaveAcademicPeriodInputDTO {
+    id?: number;
     semester: number;
     period_type: string;
     start_date: string;

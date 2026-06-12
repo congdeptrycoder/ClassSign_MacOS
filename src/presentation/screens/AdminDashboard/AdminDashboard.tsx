@@ -59,6 +59,9 @@ export const AdminDashboard = () => {
         handleSaveRegistrationPeriod,
         isEditingPeriod,
         setIsEditingPeriod,
+        editPeriodId,
+        setEditPeriodId,
+        handleEditRegistrationPeriod,
         handleDeleteRegistrationPeriod,
     } = useAdminDashboardViewModel(onNavigateToEdit, onLogout);
 
@@ -93,7 +96,7 @@ export const AdminDashboard = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h3 style={{ margin: 0 }}>Quản lý Giai đoạn đăng ký</h3>
                         {!isEditingPeriod && (
-                            <button className="primary-btn" onClick={() => setIsEditingPeriod(true)}>Thêm đợt đăng ký mới</button>
+                            <button className="primary-btn" onClick={() => handleEditRegistrationPeriod()}>Thêm đợt đăng ký mới</button>
                         )}
                     </div>
 
@@ -140,8 +143,8 @@ export const AdminDashboard = () => {
                                     style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                                 />
                             </div>
-                            <button className="primary-btn" onClick={handleSaveRegistrationPeriod}>Lưu</button>
-                            <button className="delete-btn" onClick={() => setIsEditingPeriod(false)}>Huỷ</button>
+                            <button className="primary-btn" onClick={handleSaveRegistrationPeriod}>{editPeriodId ? 'Cập nhật' : 'Lưu'}</button>
+                            <button className="delete-btn" onClick={() => handleEditRegistrationPeriod()}>Huỷ</button>
                         </div>
                     )}
 
@@ -168,7 +171,8 @@ export const AdminDashboard = () => {
                                             {period.is_active === 1 ? 'ĐANG DIỄN RA' : 'ĐÃ KẾT THÚC'}
                                         </td>
                                         <td>
-                                            <button className="primary-btn" onClick={() => navigate('/admin/program-registration-details', { state: { semester: period.semester } })} style={{ marginRight: '8px' }}>Xem chi tiết</button>
+                                            <button className="detail-btn" onClick={() => navigate('/admin/program-registration-details', { state: { semester: period.semester } })} style={{ marginRight: '8px' }}>Xem chi tiết</button>
+                                            <button className="edit-btn-yellow" onClick={() => handleEditRegistrationPeriod(period as any)} style={{ marginRight: '8px' }}>Sửa</button>
                                             <button className="delete-btn" onClick={() => handleDeleteRegistrationPeriod(period.id)}>Xoá</button>
                                         </td>
                                     </tr>
@@ -228,7 +232,7 @@ export const AdminDashboard = () => {
                                         <td>{item.ma_lop_kem}</td>
                                         <td>{item.ma_hp}</td>
                                         <td>{item.ten_hp}</td>
-                                        <td>{item.khoi_luong}</td>
+
                                         <td>{item.ghi_chu}</td>
                                         <td>{item.tiet_bd}</td>
                                         <td>{item.tiet_kt}</td>

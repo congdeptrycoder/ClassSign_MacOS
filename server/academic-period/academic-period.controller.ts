@@ -88,6 +88,29 @@ export const createAcademicPeriod = (req: Request, res: Response) => {
   );
 };
 
+export const updateAcademicPeriod = (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { semester, period_type, start_date, end_date } = req.body;
+
+  if (!semester || !period_type || !start_date || !end_date) {
+    return sendError(res, 400, 'Vui lòng cung cấp đầy đủ thông tin.');
+  }
+
+  const updateQuery = `
+    UPDATE academic_periods 
+    SET semester = ?, period_type = ?, start_date = ?, end_date = ?
+    WHERE id = ?
+  `;
+
+  db.run(updateQuery, [semester, period_type, start_date, end_date, id], function(err) {
+    if (err) {
+      console.error('Database error:', err);
+      return sendError(res, 500, 'Lỗi máy chủ nội bộ.');
+    }
+    return sendSuccess(res, null, 'Cập nhật kế hoạch đăng ký thành công.');
+  });
+};
+
 export const deleteAcademicPeriod = (req: Request, res: Response) => {
   const { id } = req.params;
 

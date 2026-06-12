@@ -50,7 +50,9 @@ export const StudentDashboard = () => {
         confirmDeleteCourse,
         activeSemesterId,
         activeSemesterName,
-    } = useStudentDashboardViewModel(onLogout, account?.id ?? 1, onViewCurriculum);
+        totalCredits,
+        statusNote,
+    } = useStudentDashboardViewModel(onLogout, account ?? null, onViewCurriculum);
 
     const { isDark, toggleTheme } = useTheme();
     const studentLabel = `${account?.name ?? 'Sinh viên'} - ${account?.id_card ?? account?.username ?? account?.id ?? ''}`;
@@ -260,6 +262,12 @@ export const StudentDashboard = () => {
                                 )}
                             </tbody>
                         </table>
+                        <div className="table-footer" style={{ marginTop: '16px', padding: '12px', background: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <div className="credits-info" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <span className="total-credits" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>Tổng số TC: {totalCredits}</span>
+                                <span className="credits-note" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>* Ghi chú: {statusNote}</span>
+                            </div>
+                        </div>
                     </div>
                 </section>
 

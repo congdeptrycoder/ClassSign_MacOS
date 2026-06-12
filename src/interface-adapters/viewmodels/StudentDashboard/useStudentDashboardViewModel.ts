@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Account } from '../../../domain/entities/Account';
 import { GetAllAcademicPeriodsUseCase } from '../../../application/use-cases/GetAllAcademicPeriodsUseCase';
 import { ManageStudentRegistration } from '../../../application/use-cases/ManageStudentRegistration';
 import {
@@ -67,11 +68,14 @@ function parseTimetableEvents(entries: TimetableEntry[]): TimeEvent[] {
     });
 }
 
+
 export const useStudentDashboardViewModel = (
     onLogout: () => void,
-    studentId = 1,
+    account: Account | null,
     onViewCurriculum?: () => void
 ) => {
+    const studentId = account?.id ?? 1;
+    const status = account?.status ?? 'study';
     const [isUserInfoVisible, setIsUserInfoVisible] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isSuggestionVisible, setIsSuggestionVisible] = useState(false);
@@ -252,6 +256,16 @@ export const useStudentDashboardViewModel = (
             return;
         }
 
+        const isAlreadyRegistered = registeredSubjects.some(
+            sub => sub.courseId === registerTarget.courseId
+        );
+        const additionalCredits = isAlreadyRegistered ? 0 : registerTarget.credits;
+
+        if (totalCredits + additionalCredits > maxCredits) {
+            setAlarmMessage(`Tổng số TC vượt quá giới hạn. Số TC cho phép của bạn là ${maxCredits} TC.`);
+            return;
+        }
+
         try {
             setIsSubmitting(true);
             if (currentRegPeriodType === 'register_program') {
@@ -303,6 +317,32 @@ export const useStudentDashboardViewModel = (
         }
     };
 
+    const totalCredits = useMemo(() => {
+        return registeredSubjects
+            .filter(subject => subject.semester === activeSemesterId)
+            .reduce((sum, subject) => sum + subject.credits, 0);
+    }, [registeredSubjects, activeSemesterId]);
+
+    const maxCredits = useMemo(() => {
+        switch (status) {
+            case 'study_cc1': return 20;
+            case 'study_cc2': return 16;
+            case 'study_cc3': return 12;
+            case 'study':
+            default: return 24;
+        }
+    }, [status]);
+
+    const statusNote = useMemo(() => {
+        switch (status) {
+            case 'study_cc1': return 'Bạn đang bị cảnh cáo mức 1. Chỉ được đăng ký tối đa 20 TC';
+            case 'study_cc2': return 'Bạn đang bị cảnh cáo mức 2. Chỉ được đăng ký tối đa 16 TC';
+            case 'study_cc3': return 'Bạn đang bị cảnh cáo mức 3. Chỉ được đăng ký tối đa 12 TC';
+            case 'study':
+            default: return 'Bạn được đăng ký tối đa 24 TC';
+        }
+    }, [status]);
+
     return {
         isUserInfoVisible,
         toggleUserInfo,
@@ -329,5 +369,8 @@ export const useStudentDashboardViewModel = (
         confirmDeleteCourse,
         activeSemesterId,
         activeSemesterName,
+        totalCredits,
+        maxCredits,
+        statusNote,
     };
 };

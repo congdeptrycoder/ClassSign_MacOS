@@ -9,6 +9,7 @@ interface LoginResponseData {
     name: string;
     role: string;
     id_card: string;
+    status: string;
   };
 }
 
@@ -25,7 +26,8 @@ export class AccountRepositoryImpl implements IAccountRepository {
         user.username,
         user.name,
         user.role,
-        user.id_card
+        user.id_card,
+        user.status
       );
     } catch (error: any) {
       console.error('AccountRepositoryImpl login error:', error);

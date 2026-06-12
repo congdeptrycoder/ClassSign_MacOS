@@ -42,15 +42,23 @@ export class AcademicPeriodRepositoryImpl implements IAcademicPeriodRepository {
     semester: number,
     period_type: string,
     start_date: string,
-    end_date: string
+    end_date: string,
+    id?: number
   ): Promise<number> {
     try {
-      const data = await apiClient.post<CreatedAcademicPeriodResponse>(
-        '/academic-periods',
-        { semester, period_type, start_date, end_date }
-      );
-
-      return data.id;
+      if (id) {
+        await apiClient.put<null>(
+          `/academic-periods/${id}`,
+          { semester, period_type, start_date, end_date }
+        );
+        return id;
+      } else {
+        const data = await apiClient.post<CreatedAcademicPeriodResponse>(
+          '/academic-periods',
+          { semester, period_type, start_date, end_date }
+        );
+        return data.id;
+      }
     } catch (error: any) {
       console.error('AcademicPeriodRepositoryImpl save error:', error);
       throw new Error(error.message || 'Lỗi kết nối tới máy chủ.');
