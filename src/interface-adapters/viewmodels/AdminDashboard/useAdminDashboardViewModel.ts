@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { filterTableByColumn } from '../../../shared/utils/FilterTableByColumn';
 
 import { SemesterRepositoryImpl } from '../../../infrastructure/repositories/SemesterRepositoryImpl';
 import { AcademicPeriodRepositoryImpl } from '../../../infrastructure/repositories/AcademicPeriodRepositoryImpl';
@@ -10,6 +11,11 @@ import { SemesterController } from '../../controllers/SemesterController';
 import { AcademicPeriodController } from '../../controllers/AcademicPeriodController';
 import { AcademicPeriodDTO } from '../../../application/dto/AcademicPeriodDTO';
 import { SemesterDTO } from '../../../application/dto/SemesterDTO';
+import { AdminClassRepositoryImpl } from '../../../infrastructure/repositories/AdminClassRepositoryImpl';
+import { GetAllClassesBySemesterUseCase } from '../../../application/use-cases/GetAllClassesBySemesterUseCase';
+import { DeleteClassCourseUseCase } from '../../../application/use-cases/DeleteClassCourseUseCase';
+import { AdminClassController } from '../../controllers/AdminClassController';
+import { CreateClassCourseUseCase } from '../../../application/use-cases/CreateClassCourseUseCase';
 
 
 export interface ClassInfo {
@@ -21,6 +27,7 @@ export interface ClassInfo {
     ten_hp: string;
     khoi_luong: string;
     ghi_chu: string;
+    thu: string;
     tiet_bd: string;
     tiet_kt: string;
     buoi: string;
@@ -73,34 +80,8 @@ export const useAdminDashboardViewModel = (
     onLogout?: () => void,
 ) => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchMode, setSearchMode] = useState('Mã lớp');
-    const [isModeModalOpen, setModeModalOpen] = useState(false);
-    const [department, setDepartment] = useState('');
-    const [isDeptModalOpen, setDeptModalOpen] = useState(false);
-    const [major, setMajor] = useState('');
-    const [isMajorModalOpen, setMajorModalOpen] = useState(false);
-    const [classesData, setClassesData] = useState<ClassInfo[]>([
-        {
-            ky: '20261',
-            khoa_truong: 'Khoa KH&CNGD',
-            ma_lop: '360018',
-            ma_lop_kem: '888888',
-            ma_hp: 'AC2020',
-            ten_hp: 'Đồ hoạ hình động 2D,3D',
-            khoi_luong: '3(3-1-0-6)',
-            ghi_chu: 'Công nghệ giáo dục 02 K68',
-            tiet_bd: '1',
-            tiet_kt: '3',
-            buoi: 'Sáng',
-            phong_hoc: 'C7-111',
-            can_tn: 'NULL',
-            sl_dk: '51',
-            sl_max: '60',
-            trang_thai: 'Mở ĐK',
-            teaching_type: '',
-        },
-    ]);
+    const [filters, setFilters] = useState<Partial<Record<keyof ClassInfo, string>>>({});
+    const [classesData, setClassesData] = useState<ClassInfo[]>([]);
 
     const toggleProfile = () => {
         setIsProfileOpen(currentValue => !currentValue);
@@ -115,9 +96,14 @@ export const useAdminDashboardViewModel = (
         window.alert('Upload: Chức năng upload file (.xlsx) sẽ được thực hiện.');
     };
 
-    const handleSearch = () => {
-        window.alert(`Tìm kiếm: Đang tìm kiếm: ${searchQuery} theo ${searchMode}`);
+    const handleFilterChange = (key: keyof ClassInfo, value: string) => {
+        setFilters(prev => ({
+            ...prev,
+            [key]: value
+        }));
     };
+
+    const filteredClassesData = filterTableByColumn(classesData, filters);
 
     const handleEdit = (item: ClassInfo) => {
         if (onNavigateToEdit) {
@@ -128,23 +114,35 @@ export const useAdminDashboardViewModel = (
         window.alert('Chuyển hướng: Sẽ chuyển sang màn hình sửa với thông tin tương ứng.');
     };
 
-    const handleDelete = (item: ClassInfo) => {
+    const handleDelete = async (item: ClassInfo) => {
         if (window.confirm(`Xác nhận xoá: Bạn có chắc chắn muốn xoá lớp ${item.ma_lop}?`)) {
-            setClassesData(currentItems =>
-                currentItems.filter(classItem => classItem.ma_lop !== item.ma_lop),
-            );
+            try {
+                const repo = new AdminClassRepositoryImpl();
+                const controller = new AdminClassController(
+                    new CreateClassCourseUseCase(repo),
+                    undefined,
+                    new DeleteClassCourseUseCase(repo)
+                );
+                
+                // We need the class ID to delete it. Since ClassInfo doesn't have `id`, we might have a problem.
+                // Wait, I should add `id` to ClassInfo or fetch it again.
+                // Actually, I can just use `item.id` if I cast it. Let's cast it as any for now to get id.
+                const classId = (item as any).id;
+                if (!classId) {
+                    window.alert("Lỗi: Không tìm thấy ID của lớp học");
+                    return;
+                }
+                
+                await controller.deleteClassCourse(classId);
+                
+                setClassesData(currentItems =>
+                    currentItems.filter(classItem => classItem.ma_lop !== item.ma_lop),
+                );
+            } catch (error: any) {
+                window.alert('Xoá lớp học thất bại: ' + (error.message || ''));
+            }
         }
     };
-
-    const handleSelectDepartment = (selectedDepartment: string) => {
-        setDepartment(selectedDepartment);
-        setMajor('');
-        setDeptModalOpen(false);
-    };
-
-    const searchModeOptions = ['Mã lớp', 'Mã HP', 'Tên HP'];
-    const departmentOptions = Object.keys(majorMapping);
-    const majorOptions = department ? majorMapping[department] ?? [] : [];
 
     
     const [regPeriodType, setRegPeriodType] = useState<'register_program' | 'register_class'>('register_program');
@@ -153,6 +151,8 @@ export const useAdminDashboardViewModel = (
     const [selectedSemester, setSelectedSemester] = useState<number | ''>('');
     const [isEditingPeriod, setIsEditingPeriod] = useState<boolean>(false);
     const [editPeriodId, setEditPeriodId] = useState<number | null>(null);
+
+    const [selectedClassSemesterId, setSelectedClassSemesterId] = useState<number | ''>('');
     
     const [periodsData, setPeriodsData] = useState<AcademicPeriodDTO[]>([]);
     const [semestersData, setSemestersData] = useState<SemesterDTO[]>([]);
@@ -174,6 +174,9 @@ export const useAdminDashboardViewModel = (
             if (sData.length > 0 && selectedSemester === '') {
                 setSelectedSemester(sData[0].id);
             }
+            if (sData.length > 0 && selectedClassSemesterId === '') {
+                setSelectedClassSemesterId(sData[0].id);
+            }
 
             const pData = await periodController.getAll();
             setPeriodsData(pData);
@@ -182,9 +185,55 @@ export const useAdminDashboardViewModel = (
         }
     };
 
+    const loadClassesData = async (semesterId: number) => {
+        try {
+            const repo = new AdminClassRepositoryImpl();
+            const controller = new AdminClassController(
+                new CreateClassCourseUseCase(repo),
+                undefined,
+                undefined,
+                new GetAllClassesBySemesterUseCase(repo)
+            );
+            const data = await controller.getAllClassesBySemester(semesterId);
+            
+            const mappedData: ClassInfo[] = data.map((d: any) => ({
+                id: d.id,
+                ky: d.ky || semesterId.toString(),
+                khoa_truong: d.khoa_truong || '',
+                ma_lop: d.ma_lop || '',
+                ma_lop_kem: d.ma_lop_kem !== 'NULL' ? d.ma_lop_kem : '',
+                ma_hp: d.ma_hp || '',
+                ten_hp: d.ten_hp || '',
+                khoi_luong: d.khoi_luong || '',
+                ghi_chu: d.ghi_chu !== 'NULL' ? d.ghi_chu : '',
+                thu: d.thu || '',
+                tiet_bd: d.tiet_bd || '',
+                tiet_kt: d.tiet_kt || '',
+                buoi: d.buoi || '',
+                phong_hoc: d.phong_hoc || '',
+                can_tn: d.can_tn !== 'NULL' ? d.can_tn : '',
+                sl_dk: d.sl_dk?.toString() || '0',
+                sl_max: d.sl_max?.toString() || '0',
+                trang_thai: (d.sl_dk >= d.sl_max && d.sl_max > 0) ? 'Đã đầy' : 'Mở ĐK',
+                teaching_type: d.teaching_type !== 'NULL' ? d.teaching_type : '',
+            } as any));
+            
+            setClassesData(mappedData);
+        } catch (error) {
+            console.error("Failed to load classes data", error);
+            setClassesData([]);
+        }
+    };
+
     useEffect(() => {
         loadData();
     }, []);
+
+    useEffect(() => {
+        if (selectedClassSemesterId !== '') {
+            loadClassesData(selectedClassSemesterId as number);
+        }
+    }, [selectedClassSemesterId]);
 
     const handleSaveRegistrationPeriod = async () => {
         if (!selectedSemester || !regPeriodStart || !regPeriodEnd) {
@@ -250,28 +299,12 @@ export const useAdminDashboardViewModel = (
         toggleProfile,
         handleLogout,
         handleUpload,
-        searchQuery,
-        setSearchQuery,
-        searchMode,
-        setSearchMode,
-        department,
-        setDepartment,
-        major,
-        setMajor,
-        handleSearch,
+        filters,
+        handleFilterChange,
         classesData,
+        filteredClassesData,
         handleEdit,
         handleDelete,
-        isModeModalOpen,
-        setModeModalOpen,
-        isDeptModalOpen,
-        setDeptModalOpen,
-        isMajorModalOpen,
-        setMajorModalOpen,
-        searchModeOptions,
-        departmentOptions,
-        majorOptions,
-        handleSelectDepartment,
         // Xuất thêm các thuộc tính mới
         regPeriodType,
         setRegPeriodType,
@@ -290,5 +323,7 @@ export const useAdminDashboardViewModel = (
         setEditPeriodId,
         handleEditRegistrationPeriod,
         handleDeleteRegistrationPeriod,
+        selectedClassSemesterId,
+        setSelectedClassSemesterId,
     };
 };

@@ -16,7 +16,7 @@ Bảng students: Chứa thông tin sinh viên
 - address: TEXT
 - dob: TEXT (Ngày sinh - YYYY-MM-DD)
 - gender: TEXT (Giới tính)
-- status: TEXT (study - Đang học ( Có thể đăng ký tối thiểu 14 tín chỉ học phần, tối đa 24 tín chỉ), graduate - Đã tốt nghiệp, leave - Bảo lưu, drop - Buộc thôi học, study_cc1 - Cảnh cáo mức 1( Có thể đăng ký tối thiểu 12 tín chỉ học phần, tối đa 20 tín chỉ), study_cc2 - Cảnh cáo mức 2( Có thể đăng ký tối thiểu 8 tín chỉ học phần, tối đa 16 tín chỉ), study_cc3 - Cảnh cáo mức 3( Có thể đăng ký tối thiểu 6 tín chỉ học phần, tối đa 12 tín chỉ))
+- status: TEXT (study - Đang học ( Có thể đăng ký tối đa 24 tín chỉ), graduate - Đã tốt nghiệp, leave - Bảo lưu, drop - Buộc thôi học, study_cc1 - Cảnh cáo mức 1( Có thể đăng ký tối đa 20 tín chỉ), study_cc2 - Cảnh cáo mức 2( Có thể đăng ký tối đa 16 tín chỉ), study_cc3 - Cảnh cáo mức 3( Có thể đăng ký tối đa 12 tín chỉ))
 - created_at: TEXT (DATETIME)
 - updated_at: TEXT (DATETIME)
 
@@ -84,9 +84,9 @@ Bảng classes_course: Chứa thông tin lớp học phần
 - id: INTEGER (PRIMARY KEY AUTOINCREMENT)
 - course_id: INTEGER (FOREIGN KEY to courses)
 - semester: INTEGER (FOREIGN KEY to semesters)
-- detail: TEXT (JSON chứa thời khóa biểu và địa điểm)
-- total_slots: INTEGER (tổng số chỗ)
-- occupied_slots: INTEGER (số chỗ đã đăng ký)
+- detail: TEXT (JSON chứa thông tin chi tiết về lớp học )
+- total_slots: INTEGER (tổng số chỗ tối đa)
+- occupied_slots: INTEGER (số chỗ đã được sinh viên đăng ký)
 - id_lecturer: INTEGER (FOREIGN KEY to accounts)
 - created_at: TEXT (DATETIME)
 - updated_at: TEXT (DATETIME)

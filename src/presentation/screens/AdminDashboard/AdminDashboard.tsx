@@ -5,13 +5,27 @@ import {
     useAdminDashboardViewModel,
 } from '../../../interface-adapters/viewmodels/AdminDashboard/useAdminDashboardViewModel';
 import { useTheme } from '../../components/ThemeContext';
+import { getCurrentAccount } from '../../../shared/session/currentUserSession';
 import hustLogo from '../../../../public/images/hust-logo.png';
 import './AdminDashboard.css';
 
-const tableHeaders = [
-    'Kỳ', 'Trường/Khoa', 'Mã lớp', 'Mã lớp kèm', 'Mã HP', 'Tên HP',
-    'Khối lượng', 'Ghi chú', 'Tiết BD', 'Tiết KT', 'Buổi', 'Phòng học',
-    'Cần TN', 'SLDK', 'SL Max', 'Trạng thái', 'TeachingType', 'Hành động',
+const tableHeaders: { label: string, key: keyof ClassInfo | 'action' }[] = [
+    { label: 'Trường/Khoa', key: 'khoa_truong' },
+    { label: 'Mã lớp', key: 'ma_lop' },
+    { label: 'Mã lớp kèm', key: 'ma_lop_kem' },
+    { label: 'Mã HP', key: 'ma_hp' },
+    { label: 'Tên HP', key: 'ten_hp' },
+    { label: 'Ghi chú', key: 'ghi_chu' },
+    { label: 'Thứ', key: 'thu' },
+    { label: 'Tiết BD', key: 'tiet_bd' },
+    { label: 'Tiết KT', key: 'tiet_kt' },
+    { label: 'Buổi', key: 'buoi' },
+    { label: 'Phòng học', key: 'phong_hoc' },
+    { label: 'Cần TN', key: 'can_tn' },
+    { label: 'SLDK', key: 'sl_dk' },
+    { label: 'SL Max', key: 'sl_max' },
+    { label: 'TeachingType', key: 'teaching_type' },
+    { label: 'Hành động', key: 'action' },
 ];
 
 export const AdminDashboard = () => {
@@ -24,27 +38,12 @@ export const AdminDashboard = () => {
         toggleProfile,
         handleLogout,
         handleUpload,
-        searchQuery,
-        setSearchQuery,
-        searchMode,
-        setSearchMode,
-        department,
-        major,
-        setMajor,
-        handleSearch,
+        filters,
+        handleFilterChange,
         classesData,
+        filteredClassesData,
         handleEdit,
         handleDelete,
-        isModeModalOpen,
-        setModeModalOpen,
-        isDeptModalOpen,
-        setDeptModalOpen,
-        isMajorModalOpen,
-        setMajorModalOpen,
-        searchModeOptions,
-        departmentOptions,
-        majorOptions,
-        handleSelectDepartment,
         // Registration Period
         regPeriodType,
         setRegPeriodType,
@@ -63,9 +62,14 @@ export const AdminDashboard = () => {
         setEditPeriodId,
         handleEditRegistrationPeriod,
         handleDeleteRegistrationPeriod,
+        selectedClassSemesterId,
+        setSelectedClassSemesterId,
     } = useAdminDashboardViewModel(onNavigateToEdit, onLogout);
 
     const { isDark, toggleTheme } = useTheme();
+
+    const account = getCurrentAccount();
+    const displayName = account ? `${account.name} - ${account.id_card}` : 'Unknown User';
 
     return (
         <div className="admin-container">
@@ -86,7 +90,7 @@ export const AdminDashboard = () => {
 
             {isProfileOpen && (
                 <div className="user-profile-popover card">
-                    <p className="user-name">Nguyễn Tuấn Anh - PDT3636</p>
+                    <p className="user-name">{displayName}</p>
                     <button className="logout-btn" onClick={handleLogout}>Đăng xuất</button>
                 </div>
             )}
@@ -171,7 +175,7 @@ export const AdminDashboard = () => {
                                             {period.is_active === 1 ? 'ĐANG DIỄN RA' : 'ĐÃ KẾT THÚC'}
                                         </td>
                                         <td>
-                                            <button className="detail-btn" onClick={() => navigate('/admin/program-registration-details', { state: { semester: period.semester } })} style={{ marginRight: '8px' }}>Xem chi tiết</button>
+                                            <button className="detail-btn" onClick={() => navigate('/admin/program-registration-details', { state: { semester: period.semester, semesterString: semestersData.find(s => s.id === period.semester)?.semester } })} style={{ marginRight: '8px' }}>Xem chi tiết</button>
                                             <button className="edit-btn-yellow" onClick={() => handleEditRegistrationPeriod(period as any)} style={{ marginRight: '8px' }}>Sửa</button>
                                             <button className="delete-btn" onClick={() => handleDeleteRegistrationPeriod(period.id)}>Xoá</button>
                                         </td>
@@ -184,32 +188,23 @@ export const AdminDashboard = () => {
                     )}
                 </section>
 
-                <section className="action-bar card">
-                    <div className="upload-section">
-                        <button className="primary-btn" onClick={handleUpload}>Upload file</button>
-                        <span className="hint-text">* chỉ up file .xlsx</span>
+                <section className="action-bar card" style={{ display: 'flex', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <h3 style={{ margin: 0 }}>Quản lý danh sách lớp học</h3>
+                        <select
+                            value={selectedClassSemesterId}
+                            onChange={(e) => setSelectedClassSemesterId(Number(e.target.value))}
+                            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        >
+                            {semestersData.map(sem => (
+                                <option key={sem.id} value={sem.id}>{sem.semester}</option>
+                            ))}
+                        </select>
                     </div>
 
-                    <div className="search-box">
-                        <input
-                            type="text"
-                            placeholder="Nhập thông tin tìm kiếm..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="search-input"
-                        />
-                        <div className="dropdown-row">
-                            <button className="dropdown-btn" onClick={() => setModeModalOpen(true)}>
-                                Tìm theo: {searchMode}
-                            </button>
-                            <button className="dropdown-btn" onClick={() => setDeptModalOpen(true)}>
-                                Khoa/Trường: {department || 'Chọn'}
-                            </button>
-                            <button className="dropdown-btn" onClick={() => setMajorModalOpen(true)}>
-                                Ngành: {major || 'Chọn'}
-                            </button>
-                        </div>
-                        <button className="search-btn" onClick={handleSearch}>Tìm kiếm</button>
+                    <div className="upload-section">
+                        <button className="primary-btn" onClick={handleUpload}>Upload file</button>
+                        <span className="hint-text" style={{ marginLeft: '10px' }}>* chỉ up file .xlsx</span>
                     </div>
                 </section>
 
@@ -219,21 +214,31 @@ export const AdminDashboard = () => {
                             <thead>
                                 <tr>
                                     {tableHeaders.map((header, idx) => (
-                                        <th key={idx}>{header}</th>
+                                        <th key={idx}>
+                                            <div>{header.label}</div>
+                                            {header.key !== 'action' && (
+                                                <input
+                                                    type="text"
+                                                    placeholder="Lọc..."
+                                                    value={filters[header.key as keyof ClassInfo] || ''}
+                                                    onChange={e => handleFilterChange(header.key as keyof ClassInfo, e.target.value)}
+                                                    style={{ width: '100%', marginTop: '5px', padding: '4px', boxSizing: 'border-box' }}
+                                                />
+                                            )}
+                                        </th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {classesData.map((item, idx) => (
+                                {filteredClassesData.map((item, idx) => (
                                     <tr key={idx}>
-                                        <td>{item.ky}</td>
                                         <td>{item.khoa_truong}</td>
                                         <td>{item.ma_lop}</td>
                                         <td>{item.ma_lop_kem}</td>
                                         <td>{item.ma_hp}</td>
                                         <td>{item.ten_hp}</td>
-
                                         <td>{item.ghi_chu}</td>
+                                        <td>{item.thu}</td>
                                         <td>{item.tiet_bd}</td>
                                         <td>{item.tiet_kt}</td>
                                         <td>{item.buoi}</td>
@@ -241,7 +246,6 @@ export const AdminDashboard = () => {
                                         <td>{item.can_tn}</td>
                                         <td>{item.sl_dk}</td>
                                         <td>{item.sl_max}</td>
-                                        <td>{item.trang_thai}</td>
                                         <td>{item.teaching_type}</td>
                                         <td>
                                             <div className="action-cell">
@@ -257,51 +261,7 @@ export const AdminDashboard = () => {
                 </section>
             </main>
 
-            {/* Modals */}
-            {isModeModalOpen && (
-                <div className="modal-overlay" onClick={() => setModeModalOpen(false)}>
-                    <div className="modal-content card" onClick={e => e.stopPropagation()}>
-                        <h3>Chọn chế độ tìm kiếm</h3>
-                        <div className="modal-list">
-                            {searchModeOptions.map(opt => (
-                                <button key={opt} onClick={() => { setSearchMode(opt); setModeModalOpen(false); }}>
-                                    {opt}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {isDeptModalOpen && (
-                <div className="modal-overlay" onClick={() => setDeptModalOpen(false)}>
-                    <div className="modal-content card" onClick={e => e.stopPropagation()}>
-                        <h3>Chọn Khoa/Trường</h3>
-                        <div className="modal-list">
-                            {departmentOptions.map(opt => (
-                                <button key={opt} onClick={() => handleSelectDepartment(opt)}>
-                                    {opt}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {isMajorModalOpen && (
-                <div className="modal-overlay" onClick={() => setMajorModalOpen(false)}>
-                    <div className="modal-content card" onClick={e => e.stopPropagation()}>
-                        <h3>Chọn Ngành</h3>
-                        <div className="modal-list">
-                            {majorOptions.map(opt => (
-                                <button key={opt} onClick={() => { setMajor(opt); setMajorModalOpen(false); }}>
-                                    {opt}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

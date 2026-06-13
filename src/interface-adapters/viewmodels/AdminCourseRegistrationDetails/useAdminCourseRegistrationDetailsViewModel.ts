@@ -3,6 +3,11 @@ import { CourseRegistrationStat } from '../../../domain/entities/CourseRegistrat
 import { AdminRepositoryImpl } from '../../../infrastructure/repositories/AdminRepositoryImpl';
 import { GetCourseRegistrationStatsUseCase } from '../../../application/use-cases/GetCourseRegistrationStatsUseCase';
 import { AdminController } from '../../controllers/AdminController';
+import { AdminClassRepositoryImpl } from '../../../infrastructure/repositories/AdminClassRepositoryImpl';
+import { GetClassesByCourseUseCase } from '../../../application/use-cases/GetClassesByCourseUseCase';
+import { DeleteClassCourseUseCase } from '../../../application/use-cases/DeleteClassCourseUseCase';
+import { CreateClassCourseUseCase } from '../../../application/use-cases/CreateClassCourseUseCase';
+import { AdminClassController } from '../../controllers/AdminClassController';
 
 export const useAdminCourseRegistrationDetailsViewModel = (semester: number | null) => {
     const [stats, setStats] = useState<CourseRegistrationStat[]>([]);
@@ -13,6 +18,18 @@ export const useAdminCourseRegistrationDetailsViewModel = (semester: number | nu
     const [filterTenHp, setFilterTenHp] = useState('');
     const [filterTruongKhoa, setFilterTruongKhoa] = useState('');
     const [filterSoLuong, setFilterSoLuong] = useState('');
+
+    const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null);
+    const [courseClasses, setCourseClasses] = useState<Record<number, any[]>>({});
+    const [loadingClasses, setLoadingClasses] = useState(false);
+
+    const getAdminClassController = () => {
+        const repo = new AdminClassRepositoryImpl();
+        const getUseCase = new GetClassesByCourseUseCase(repo);
+        const deleteUseCase = new DeleteClassCourseUseCase(repo);
+        const createUseCase = new CreateClassCourseUseCase(repo); // dummy for constructor
+        return new AdminClassController(createUseCase, getUseCase, deleteUseCase);
+    };
 
     useEffect(() => {
         if (!semester) return;
@@ -46,6 +63,51 @@ export const useAdminCourseRegistrationDetailsViewModel = (semester: number | nu
         );
     });
 
+    const toggleExpandCourse = async (courseId: number, sem: number) => {
+        if (expandedCourseId === courseId) {
+            setExpandedCourseId(null);
+            return;
+        }
+
+        setExpandedCourseId(courseId);
+        if (!courseClasses[courseId]) {
+            setLoadingClasses(true);
+            try {
+                const controller = getAdminClassController();
+                const classes = await controller.getClassesByCourse(sem, courseId);
+                setCourseClasses(prev => ({ ...prev, [courseId]: classes }));
+            } catch (err: any) {
+                window.alert('Lỗi khi tải danh sách lớp: ' + (err.message || ''));
+            } finally {
+                setLoadingClasses(false);
+            }
+        }
+    };
+
+    const handleDeleteClass = async (classId: number, courseId: number, sem: number) => {
+        if (window.confirm('Bạn có chắc chắn muốn xoá lớp học này?')) {
+            try {
+                const controller = getAdminClassController();
+                await controller.deleteClassCourse(classId);
+                window.alert('Xoá lớp thành công!');
+                // Reload classes
+                setLoadingClasses(true);
+                const classes = await controller.getClassesByCourse(sem, courseId);
+                setCourseClasses(prev => ({ ...prev, [courseId]: classes }));
+                
+                // Optionally reload stats if you want, but this is fine.
+            } catch (err: any) {
+                window.alert('Lỗi khi xoá lớp: ' + (err.message || ''));
+            } finally {
+                setLoadingClasses(false);
+            }
+        }
+    };
+
+    const handleEditClass = (classItem: any) => {
+        window.alert('Chuyển hướng: Sẽ chuyển sang màn hình sửa với thông tin tương ứng. (Tính năng đang phát triển)');
+    };
+
     return {
         stats: filteredStats,
         loading,
@@ -57,6 +119,12 @@ export const useAdminCourseRegistrationDetailsViewModel = (semester: number | nu
         filterTruongKhoa,
         setFilterTruongKhoa,
         filterSoLuong,
-        setFilterSoLuong
+        setFilterSoLuong,
+        expandedCourseId,
+        courseClasses,
+        loadingClasses,
+        toggleExpandCourse,
+        handleDeleteClass,
+        handleEditClass
     };
 };
