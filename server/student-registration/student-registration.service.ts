@@ -435,6 +435,79 @@ export async function searchClassSuggestions(
   );
 }
 
+function parseSchedule(detailStr: string): Array<{ day: string, periods: number[] }> {
+  try {
+    const parsed = JSON.parse(detailStr || '{}');
+    let slots = [];
+    if (Array.isArray(parsed)) slots = parsed;
+    else if (parsed.slots && Array.isArray(parsed.slots)) slots = parsed.slots;
+    
+    if (slots.length > 0) {
+      return slots.map((s: any) => ({
+        day: String(s.day).replace('T', ''), // 'T3' -> '3'
+        periods: Array.isArray(s.periods) ? s.periods.map(Number) : [Number(s.period)]
+      }));
+    } else if (parsed.thu && parsed.tiet_bd && parsed.tiet_kt) {
+      const start = Number(parsed.tiet_bd);
+      const end = Number(parsed.tiet_kt);
+      const periods = [];
+      for(let i = start; i <= end; i++) periods.push(i);
+      return [{
+        day: String(parsed.thu),
+        periods
+      }];
+    }
+  } catch {}
+  return [];
+}
+
+function hasOverlap(detailA: string, detailB: string): boolean {
+  const schedA = parseSchedule(detailA);
+  const schedB = parseSchedule(detailB);
+  
+  for (const slotA of schedA) {
+    for (const slotB of schedB) {
+      if (slotA.day === slotB.day) {
+        const setB = new Set(slotB.periods);
+        for (const p of slotA.periods) {
+          if (setB.has(p)) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+export async function getClassesForCourse(
+  studentId: number,
+  courseId: number
+) {
+  await ensureStudentCourseStatusColumn();
+
+  return dbAll(
+    `
+      SELECT DISTINCT
+        cc.id,
+        cc.course_id as courseId,
+        c.course_code as code,
+        c.course_name as name,
+        c.credits,
+        cc.detail,
+        cc.total_slots as totalSlots,
+        cc.occupied_slots as occupiedSlots
+      FROM classes_course cc
+      JOIN courses c ON c.id = cc.course_id
+      JOIN student_courses sc
+        ON sc.course_id = cc.course_id
+        AND sc.student_id = ?
+        AND COALESCE(sc.status, 'registered') = 'registered'
+      WHERE cc.course_id = ?
+      ORDER BY cc.id ASC
+    `,
+    [studentId, courseId]
+  );
+}
+
 export async function registerClassSection(studentId: number, classId: number) {
   await ensureStudentRecord(studentId);
 
@@ -449,7 +522,8 @@ export async function registerClassSection(studentId: number, classId: number) {
         id,
         course_id as courseId,
         total_slots as totalSlots,
-        occupied_slots as occupiedSlots
+        occupied_slots as occupiedSlots,
+        detail
       FROM classes_course
       WHERE id = ?
     `,
@@ -478,6 +552,28 @@ export async function registerClassSection(studentId: number, classId: number) {
 
   if (!registeredCourse) {
     throw new Error('Sinh viên chưa đăng ký học phần của lớp này.');
+  }
+
+  const existingCourseClass = await dbGet(
+    `
+      SELECT scr.id
+      FROM student_class_registrations scr
+      JOIN classes_course cc ON cc.id = scr.class_id
+      WHERE scr.student_id = ? AND cc.course_id = ?
+      LIMIT 1
+    `,
+    [studentId, classSection.courseId]
+  );
+
+  if (existingCourseClass) {
+    throw new Error('Bạn đã đăng ký một lớp khác của học phần này.');
+  }
+
+  const currentTimetable = await getTimetable(studentId);
+  for (const registeredClass of currentTimetable) {
+    if (hasOverlap(classSection.detail, registeredClass.detail)) {
+      throw new Error(`Trùng lịch với lớp ${registeredClass.code} (${registeredClass.name}).`);
+    }
   }
 
   const existing = await dbGet(

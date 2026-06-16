@@ -56,6 +56,12 @@ export class StudentRegistrationRepositoryImpl
     });
   }
 
+  getClassesForCourse(studentId: number, courseId: number): Promise<ClassSuggestion[]> {
+    return apiClient.get<ClassSuggestion[]>(
+      `/students/${studentId}/courses/${courseId}/classes`
+    );
+  }
+
   getTimetable(studentId: number): Promise<TimetableEntry[]> {
     return apiClient.get<TimetableEntry[]>(`/students/${studentId}/timetable`);
   }

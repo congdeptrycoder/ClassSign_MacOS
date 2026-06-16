@@ -52,6 +52,11 @@ export const StudentDashboard = () => {
         activeSemesterName,
         totalCredits,
         statusNote,
+        expandedCourseIds,
+        courseClassesData,
+        isLoadingClasses,
+        toggleCourseExpansion,
+        handleRegisterClassSection,
     } = useStudentDashboardViewModel(onLogout, account ?? null, onViewCurriculum);
 
     const { isDark, toggleTheme } = useTheme();
@@ -222,6 +227,7 @@ export const StudentDashboard = () => {
                         <table className="info-table">
                             <thead>
                                 <tr>
+                                    <th style={{ width: '40px' }}></th>
                                     <th>ID</th>
                                     <th>Mã HP</th>
                                     <th>Tên học phần</th>
@@ -232,30 +238,126 @@ export const StudentDashboard = () => {
                             </thead>
                             <tbody>
                                 {displayedSubjects.map((item) => (
-                                    <tr key={item.id}>
-                                        <td>{item.id}</td>
-                                        <td><span className="course-code">{item.code}</span></td>
-                                        <td>{item.name}</td>
-                                        <td>
-                                            <span className={`table-status status-${getRegisteredStatusClass(item.rawStatus)}`}>
-                                                {item.status}
-                                            </span>
-                                        </td>
-                                        <td>{item.credits}</td>
-                                        <td>
-                                            <button 
-                                                className="outline-btn" 
-                                                onClick={() => promptDeleteCourse(item.courseId)}
-                                                disabled={isSubmitting}
-                                            >
-                                                Xoá
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <React.Fragment key={item.id}>
+                                        <tr className={expandedCourseIds.has(item.courseId) ? 'expanded-row' : ''}>
+                                            <td>
+                                                <button 
+                                                    className="expand-btn" 
+                                                    onClick={() => toggleCourseExpansion(item.courseId)}
+                                                >
+                                                    {expandedCourseIds.has(item.courseId) ? '▼' : '▶'}
+                                                </button>
+                                            </td>
+                                            <td>{item.id}</td>
+                                            <td><span className="course-code">{item.code}</span></td>
+                                            <td>{item.name}</td>
+                                            <td>
+                                                <span className={`table-status status-${getRegisteredStatusClass(item.rawStatus)}`}>
+                                                    {item.status}
+                                                </span>
+                                            </td>
+                                            <td>{item.credits}</td>
+                                            <td>
+                                                <button 
+                                                    className="outline-btn" 
+                                                    onClick={() => promptDeleteCourse(item.courseId)}
+                                                    disabled={isSubmitting}
+                                                >
+                                                    Xoá
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {expandedCourseIds.has(item.courseId) && (
+                                            <tr className="sub-table-row">
+                                                <td colSpan={7} style={{ padding: 0 }}>
+                                                    <div className="sub-table-container" style={{ padding: '16px', background: 'var(--bg-color)', borderBottom: '1px solid var(--border-color)' }}>
+                                                        <h4 style={{ margin: '0 0 12px 0' }}>Danh sách lớp học phần</h4>
+                                                        {isLoadingClasses[item.courseId] ? (
+                                                            <p>Đang tải...</p>
+                                                        ) : (
+                                                            <table className="info-table sub-table" style={{ margin: 0 }}>
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Mã Lớp</th>
+                                                                        <th>Chi tiết lịch học</th>
+                                                                        <th>Số chỗ</th>
+                                                                        {currentRegPeriodType === 'register_class' && <th>Hành động</th>}
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {courseClassesData[item.courseId]?.length > 0 ? (
+                                                                        courseClassesData[item.courseId].map(cls => {
+                                                                            let parsed: any = {};
+                                                                            try {
+                                                                                parsed = JSON.parse(cls.detail || '{}');
+                                                                            } catch {}
+                                                                            
+                                                                            return (
+                                                                            <tr key={cls.id}>
+                                                                                <td>{parsed.ma_lop || cls.id}</td>
+                                                                                <td>
+                                                                                    {(() => {
+                                                                                        if (Array.isArray(parsed)) {
+                                                                                            return parsed.map((s: any, idx: number) => (
+                                                                                                <div key={idx}>
+                                                                                                    {s.day?.replace('T', 'Thứ ')} - Tiết {Array.isArray(s.periods) ? s.periods.join(', ') : s.period}
+                                                                                                </div>
+                                                                                            ));
+                                                                                        } else if (parsed.slots && Array.isArray(parsed.slots)) {
+                                                                                            return parsed.slots.map((s: any, idx: number) => (
+                                                                                                <div key={idx}>
+                                                                                                    {s.day?.replace('T', 'Thứ ')} - Tiết {Array.isArray(s.periods) ? s.periods.join(', ') : s.period}
+                                                                                                </div>
+                                                                                            ));
+                                                                                        } else if (parsed.thu && parsed.tiet_bd && parsed.tiet_kt) {
+                                                                                            return (
+                                                                                                <div>
+                                                                                                    Thứ {parsed.thu} - Tiết {parsed.tiet_bd}-{parsed.tiet_kt} {parsed.phong_hoc ? `(${parsed.phong_hoc})` : ''}
+                                                                                                </div>
+                                                                                            );
+                                                                                        }
+                                                                                        return cls.detail;
+                                                                                    })()}
+                                                                                </td>
+                                                                                <td>
+                                                                                    <span className={`table-status status-${cls.occupiedSlots >= cls.totalSlots ? 'blocked' : 'available'}`}>
+                                                                                        {cls.occupiedSlots}/{cls.totalSlots}
+                                                                                    </span>
+                                                                                </td>
+                                                                                {currentRegPeriodType === 'register_class' && (
+                                                                                    <td>
+                                                                                        <button 
+                                                                                            className="primary-btn" 
+                                                                                            onClick={() => handleRegisterClassSection(cls.id, item.code)}
+                                                                                            disabled={isSubmitting || cls.occupiedSlots >= cls.totalSlots}
+                                                                                            style={{ padding: '4px 12px', fontSize: '0.85rem' }}
+                                                                                        >
+                                                                                            Đăng ký
+                                                                                        </button>
+                                                                                    </td>
+                                                                                )}
+                                                                            </tr>
+                                                                        );
+                                                                    })
+                                                                    ) : (
+                                                                        <tr>
+                                                                            <td colSpan={currentRegPeriodType === 'register_class' ? 4 : 3} className="empty-table-cell">
+                                                                                Không có lớp học phần nào đang mở cho học phần này
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                </tbody>
+                                                            </table>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
                                 ))}
                                 {displayedSubjects.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="empty-table-cell">
+                                        <td colSpan={7} className="empty-table-cell">
                                             Chưa có học phần đăng ký
                                         </td>
                                     </tr>

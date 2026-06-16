@@ -9,6 +9,7 @@ import {
   removeCourseRegistration,
   searchClassSuggestions,
   searchCourseSuggestions,
+  getClassesForCourse,
 } from './student-registration.service';
 
 function parseStudentId(req: Request) {
@@ -98,6 +99,22 @@ export async function getClassSuggestions(req: Request, res: Response) {
   } catch (err) {
     console.error('getClassSuggestions error:', err);
     return handleRouteError(res, err, 'Không thể tìm gợi ý lớp học phần.');
+  }
+}
+
+export async function getCourseClasses(req: Request, res: Response) {
+  try {
+    const courseId = Number(req.params.courseId);
+    if (!Number.isInteger(courseId)) {
+      throw new Error('Mã học phần không hợp lệ.');
+    }
+    return sendSuccess(
+      res,
+      await getClassesForCourse(parseStudentId(req), courseId)
+    );
+  } catch (err) {
+    console.error('getCourseClasses error:', err);
+    return handleRouteError(res, err, 'Không thể lấy danh sách lớp học phần.');
   }
 }
 

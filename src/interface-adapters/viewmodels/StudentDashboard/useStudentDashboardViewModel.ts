@@ -94,6 +94,10 @@ export const useStudentDashboardViewModel = (
     const [activeSemesterId, setActiveSemesterId] = useState<number | null>(null);
     const [activeSemesterName, setActiveSemesterName] = useState<number | null>(null);
 
+    const [expandedCourseIds, setExpandedCourseIds] = useState<Set<number>>(new Set());
+    const [courseClassesData, setCourseClassesData] = useState<Record<number, ClassSuggestion[]>>({});
+    const [isLoadingClasses, setIsLoadingClasses] = useState<Record<number, boolean>>({});
+
     const reloadStudentData = async () => {
         const [registeredCourses, timetable] = await Promise.all([
             registrationUseCase.getRegisteredCourses(studentId),
@@ -343,6 +347,49 @@ export const useStudentDashboardViewModel = (
         }
     }, [status]);
 
+    const toggleCourseExpansion = async (courseId: number) => {
+        setExpandedCourseIds(prev => {
+            const next = new Set(prev);
+            if (next.has(courseId)) {
+                next.delete(courseId);
+            } else {
+                next.add(courseId);
+            }
+            return next;
+        });
+
+        if (!courseClassesData[courseId] && !isLoadingClasses[courseId]) {
+            setIsLoadingClasses(prev => ({ ...prev, [courseId]: true }));
+            try {
+                const classes = await registrationUseCase.getClassesForCourse(studentId, courseId);
+                setCourseClassesData(prev => ({ ...prev, [courseId]: classes }));
+            } catch (error) {
+                console.error('Lỗi khi tải danh sách lớp', error);
+                setAlarmMessage('Không thể tải danh sách lớp học phần này.');
+            } finally {
+                setIsLoadingClasses(prev => ({ ...prev, [courseId]: false }));
+            }
+        }
+    };
+
+    const handleRegisterClassSection = async (classId: number, classCode: string) => {
+        if (currentRegPeriodType !== 'register_class') {
+            window.alert('Hiện không trong giai đoạn đăng ký lớp học.');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            await registrationUseCase.registerClass(studentId, classId);
+            setAlarmMessage(`Đã đăng ký lớp học phần ${classCode} thành công.`);
+            await reloadStudentData();
+        } catch (error: any) {
+            setAlarmMessage(error.message || 'Đăng ký thất bại.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     return {
         isUserInfoVisible,
         toggleUserInfo,
@@ -372,5 +419,10 @@ export const useStudentDashboardViewModel = (
         totalCredits,
         maxCredits,
         statusNote,
+        expandedCourseIds,
+        courseClassesData,
+        isLoadingClasses,
+        toggleCourseExpansion,
+        handleRegisterClassSection,
     };
 };

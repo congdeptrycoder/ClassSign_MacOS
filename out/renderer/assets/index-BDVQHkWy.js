@@ -14865,30 +14865,69 @@ class Account {
   name;
   role;
   id_card;
-  constructor(id, username, name, role, id_card) {
+  status;
+  constructor(id, username, name, role, id_card, status = "study") {
     this.id = id;
     this.username = username;
     this.name = name;
     this.role = role;
     this.id_card = id_card;
+    this.status = status;
   }
 }
+const SERVER_BASE_URL = "http://localhost:3002";
+async function request(endpoint, options = {}) {
+  const url = `${SERVER_BASE_URL}/api${endpoint}`;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers ?? {}
+      },
+      ...options
+    });
+    const json = await response.json();
+    if (!response.ok || !json.success) {
+      throw new Error(json.message ?? `HTTP ${response.status}`);
+    }
+    if (json.data === void 0) {
+      throw new Error("Server returned an empty data payload.");
+    }
+    return json.data;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to connect to server.";
+    throw new Error(message);
+  }
+}
+const apiClient = {
+  get: (endpoint) => request(endpoint, { method: "GET" }),
+  post: (endpoint, body) => request(endpoint, {
+    method: "POST",
+    body: JSON.stringify(body)
+  }),
+  put: (endpoint, body) => request(endpoint, {
+    method: "PUT",
+    body: JSON.stringify(body)
+  }),
+  delete: (endpoint) => request(endpoint, {
+    method: "DELETE"
+  })
+};
 class AccountRepositoryImpl {
   async login(username, password) {
     try {
-      const response = await fetch("http://localhost:3002/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ username, password })
+      const { user } = await apiClient.post("/auth/login", {
+        username,
+        password
       });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Đăng nhập thất bại.");
-      }
-      const data = await response.json();
-      return new Account(data.id, data.username, data.name, data.role, data.id_card);
+      return new Account(
+        user.id,
+        user.username,
+        user.name,
+        user.role,
+        user.id_card,
+        user.status
+      );
     } catch (error) {
       console.error("AccountRepositoryImpl login error:", error);
       throw new Error(error.message || "Lỗi kết nối tới máy chủ.");
@@ -14947,20 +14986,17 @@ const useLoginViewModel = (onLoginSuccess) => {
     const controller = new LoginController(useCase);
     const result = await controller.login(currentUsername, password);
     if (result.success && result.account) {
-      const userRole = result.account.role;
       setUsernameStatus("success");
       setTimeout(() => {
         setPasswordStatus("success");
       }, 300);
       setTimeout(() => {
-        onLoginSuccess?.(userRole);
+        onLoginSuccess?.(result.account);
       }, 800);
     } else {
       setNotification(result.message || "Sai thông tin đăng nhập.");
       setUsernameStatus("error");
-      setTimeout(() => {
-        setPasswordStatus("error");
-      }, 500);
+      setPasswordStatus("error");
     }
     setIsLoading(false);
   };
@@ -15075,12 +15111,38 @@ const useTheme = () => {
   return context;
 };
 const hustLogo = "" + new URL("hust-logo-BIrxHkKN.png", import.meta.url).href;
+const STORAGE_KEY = "classsign.currentAccount";
+function saveCurrentAccount(account) {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(account));
+}
+function getCurrentAccount() {
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return new Account(
+      parsed.id,
+      parsed.username,
+      parsed.name,
+      parsed.role,
+      parsed.id_card,
+      parsed.status
+    );
+  } catch (_err) {
+    window.localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+}
+function clearCurrentAccount() {
+  window.localStorage.removeItem(STORAGE_KEY);
+}
 const LoginScreen = () => {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const [usernameInput, setUsernameInput] = reactExports.useState("");
-  const onLoginSuccess = (role) => {
-    if (role === "admin") {
+  const onLoginSuccess = (account) => {
+    saveCurrentAccount(account);
+    if (account.role === "admin") {
       navigate("/admin");
     } else {
       navigate("/student");
@@ -15141,71 +15203,249 @@ const LoginScreen = () => {
     ] })
   ] });
 };
-const majorMapping = {
-  "Trường CNTT & TT": [
-    "KHMT",
-    "KTPM",
-    "HTTT",
-    "An toàn TT",
-    "Trí tuệ nhân tạo",
-    "Khoa học Dữ liệu"
-  ],
-  "Trường Điện - Điện tử": [
-    "Kỹ thuật Điện",
-    "Kỹ thuật Điều khiển",
-    "Điện tử viễn thông"
-  ],
-  "Trường Cơ khí": ["Cơ điện tử", "Kỹ thuật Cơ khí", "Kỹ thuật Ô tô"],
-  "Trường Kinh tế": [
-    "Quản trị kinh doanh",
-    "Kế toán",
-    "Tài chỉ—Ngân hàng"
-  ],
-  "Trường Vật liệu": ["Kỹ thuật vật liệu", "Vật liệu điện tử"],
-  "Trường Hoá và Khoa học sự sống": [
-    "Kỹ thuật hoá học",
-    "Công nghệ sinh học",
-    "Kỹ thuật môi trường"
-  ],
-  "Khoa Ngoại ngữ": ["Ngôn ngữ Anh"],
-  "Khoa Toán-Tin": ["Toán tin", "Hệ thống thông tin quản lý"],
-  "Khoa KH&CNGD": [
-    "Công nghệ giáo dục",
-    "Quản lý giáo dục",
-    "Tâm lý học tổ chức và doanh nghiệp"
-  ],
-  "Khoa Vật lý kỹ thuật": ["Vật lý kỹ thuật", "Kỹ thuật hạt nhân"]
+const filterTableByColumn = (data, filters) => {
+  return data.filter((item) => {
+    return Object.entries(filters).every(([key, filterValue]) => {
+      if (!filterValue) return true;
+      const itemValue = item[key];
+      if (itemValue === null || itemValue === void 0) {
+        return false;
+      }
+      const itemString = String(itemValue).toLowerCase();
+      const filterString = String(filterValue).toLowerCase();
+      return itemString.includes(filterString);
+    });
+  });
 };
+class Semester {
+  constructor(id, semester, is_active) {
+    this.id = id;
+    this.semester = semester;
+    this.is_active = is_active;
+  }
+}
+class SemesterRepositoryImpl {
+  async getAll() {
+    try {
+      const data = await apiClient.get("/semesters");
+      return data.map(
+        (item) => new Semester(item.id, item.semester, item.is_active)
+      );
+    } catch (error) {
+      console.error("SemesterRepositoryImpl getAll error:", error);
+      throw new Error(error.message || "Lỗi kết nối tới máy chủ.");
+    }
+  }
+}
+class AcademicPeriod {
+  constructor(id, semester, semester_name, period_type, start_date, end_date, is_active) {
+    this.id = id;
+    this.semester = semester;
+    this.semester_name = semester_name;
+    this.period_type = period_type;
+    this.start_date = start_date;
+    this.end_date = end_date;
+    this.is_active = is_active;
+  }
+}
+class AcademicPeriodRepositoryImpl {
+  async getAll() {
+    try {
+      const data = await apiClient.get("/academic-periods");
+      return data.map(
+        (item) => new AcademicPeriod(
+          item.id,
+          item.semester,
+          item.semester_name,
+          item.period_type,
+          item.start_date,
+          item.end_date,
+          item.is_active
+        )
+      );
+    } catch (error) {
+      console.error("AcademicPeriodRepositoryImpl getAll error:", error);
+      throw new Error(error.message || "Lỗi kết nối tới máy chủ.");
+    }
+  }
+  async save(semester, period_type, start_date, end_date, id) {
+    try {
+      if (id) {
+        await apiClient.put(
+          `/academic-periods/${id}`,
+          { semester, period_type, start_date, end_date }
+        );
+        return id;
+      } else {
+        const data = await apiClient.post(
+          "/academic-periods",
+          { semester, period_type, start_date, end_date }
+        );
+        return data.id;
+      }
+    } catch (error) {
+      console.error("AcademicPeriodRepositoryImpl save error:", error);
+      throw new Error(error.message || "Lỗi kết nối tới máy chủ.");
+    }
+  }
+  async delete(id) {
+    try {
+      await apiClient.delete(`/academic-periods/${id}`);
+    } catch (error) {
+      console.error("AcademicPeriodRepositoryImpl delete error:", error);
+      throw new Error(error.message || "Lỗi kết nối tới máy chủ.");
+    }
+  }
+}
+class GetAllSemestersUseCase {
+  constructor(semesterRepository) {
+    this.semesterRepository = semesterRepository;
+  }
+  async execute() {
+    const semesters = await this.semesterRepository.getAll();
+    return semesters.map((s) => ({
+      id: s.id,
+      semester: s.semester,
+      is_active: s.is_active
+    }));
+  }
+}
+class GetAllAcademicPeriodsUseCase {
+  constructor(academicPeriodRepository) {
+    this.academicPeriodRepository = academicPeriodRepository;
+  }
+  async execute() {
+    const periods = await this.academicPeriodRepository.getAll();
+    return periods.map((p) => ({
+      id: p.id,
+      semester: p.semester,
+      semester_name: p.semester_name,
+      period_type: p.period_type,
+      start_date: p.start_date,
+      end_date: p.end_date,
+      is_active: p.is_active
+    }));
+  }
+}
+class SaveAcademicPeriodUseCase {
+  constructor(academicPeriodRepository) {
+    this.academicPeriodRepository = academicPeriodRepository;
+  }
+  async execute(input) {
+    return await this.academicPeriodRepository.save(
+      input.semester,
+      input.period_type,
+      input.start_date,
+      input.end_date,
+      input.id
+    );
+  }
+}
+class DeleteAcademicPeriodUseCase {
+  constructor(academicPeriodRepository) {
+    this.academicPeriodRepository = academicPeriodRepository;
+  }
+  async execute(id) {
+    await this.academicPeriodRepository.delete(id);
+  }
+}
+class SemesterController {
+  constructor(getAllSemestersUseCase) {
+    this.getAllSemestersUseCase = getAllSemestersUseCase;
+  }
+  async getAllSemesters() {
+    return await this.getAllSemestersUseCase.execute();
+  }
+}
+class AcademicPeriodController {
+  constructor(getAllUseCase, saveUseCase, deleteUseCase) {
+    this.getAllUseCase = getAllUseCase;
+    this.saveUseCase = saveUseCase;
+    this.deleteUseCase = deleteUseCase;
+  }
+  async getAll() {
+    return await this.getAllUseCase.execute();
+  }
+  async save(input) {
+    return await this.saveUseCase.execute(input);
+  }
+  async delete(id) {
+    return await this.deleteUseCase.execute(id);
+  }
+}
+class AdminClassRepositoryImpl {
+  async createClassCourse(data) {
+    await apiClient.post("/admin/classes", data);
+  }
+  async getClassesByCourse(semester, courseId) {
+    return await apiClient.get(`/admin/classes/${semester}/${courseId}`);
+  }
+  async getAllClassesBySemester(semester) {
+    return await apiClient.get(`/admin/classes/semester/${semester}`);
+  }
+  async updateClassCourse(id, data) {
+    await apiClient.put(`/admin/classes/${id}`, data);
+  }
+  async deleteClassCourse(classId) {
+    await apiClient.delete(`/admin/classes/${classId}`);
+  }
+}
+class GetAllClassesBySemesterUseCase {
+  constructor(adminClassRepository) {
+    this.adminClassRepository = adminClassRepository;
+  }
+  async execute(semester) {
+    return await this.adminClassRepository.getAllClassesBySemester(semester);
+  }
+}
+class DeleteClassCourseUseCase {
+  constructor(adminClassRepository) {
+    this.adminClassRepository = adminClassRepository;
+  }
+  async execute(classId) {
+    await this.adminClassRepository.deleteClassCourse(classId);
+  }
+}
+class AdminClassController {
+  constructor(createClassCourseUseCase, getClassesByCourseUseCase, deleteClassCourseUseCase, getAllClassesBySemesterUseCase, updateClassCourseUseCase) {
+    this.createClassCourseUseCase = createClassCourseUseCase;
+    this.getClassesByCourseUseCase = getClassesByCourseUseCase;
+    this.deleteClassCourseUseCase = deleteClassCourseUseCase;
+    this.getAllClassesBySemesterUseCase = getAllClassesBySemesterUseCase;
+    this.updateClassCourseUseCase = updateClassCourseUseCase;
+  }
+  async createClassCourse(data) {
+    await this.createClassCourseUseCase.execute(data);
+  }
+  async updateClassCourse(id, data) {
+    if (!this.updateClassCourseUseCase) throw new Error("UseCase not provided");
+    await this.updateClassCourseUseCase.execute(id, data);
+  }
+  async getClassesByCourse(semester, courseId) {
+    if (!this.getClassesByCourseUseCase) throw new Error("UseCase not provided");
+    return await this.getClassesByCourseUseCase.execute(semester, courseId);
+  }
+  async getAllClassesBySemester(semester) {
+    if (!this.getAllClassesBySemesterUseCase) throw new Error("UseCase not provided");
+    return await this.getAllClassesBySemesterUseCase.execute(semester);
+  }
+  async deleteClassCourse(classId) {
+    if (!this.deleteClassCourseUseCase) throw new Error("UseCase not provided");
+    await this.deleteClassCourseUseCase.execute(classId);
+  }
+}
+class CreateClassCourseUseCase {
+  constructor(adminClassRepository) {
+    this.adminClassRepository = adminClassRepository;
+  }
+  async execute(data) {
+    await this.adminClassRepository.createClassCourse(data);
+  }
+}
 const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
   const [isProfileOpen, setIsProfileOpen] = reactExports.useState(false);
-  const [searchQuery, setSearchQuery] = reactExports.useState("");
-  const [searchMode, setSearchMode] = reactExports.useState("Mã lớp");
-  const [isModeModalOpen, setModeModalOpen] = reactExports.useState(false);
-  const [department, setDepartment] = reactExports.useState("");
-  const [isDeptModalOpen, setDeptModalOpen] = reactExports.useState(false);
-  const [major, setMajor] = reactExports.useState("");
-  const [isMajorModalOpen, setMajorModalOpen] = reactExports.useState(false);
-  const [classesData, setClassesData] = reactExports.useState([
-    {
-      ky: "20261",
-      khoa_truong: "Khoa KH&CNGD",
-      ma_lop: "360018",
-      ma_lop_kem: "888888",
-      ma_hp: "AC2020",
-      ten_hp: "Đồ hoạ hình động 2D,3D",
-      khoi_luong: "3(3-1-0-6)",
-      ghi_chu: "Công nghệ giáo dục 02 K68",
-      tiet_bd: "1",
-      tiet_kt: "3",
-      buoi: "Sáng",
-      phong_hoc: "C7-111",
-      can_tn: "NULL",
-      sl_dk: "51",
-      sl_max: "60",
-      trang_thai: "Mở ĐK",
-      teaching_type: ""
-    }
-  ]);
+  const [filters, setFilters] = reactExports.useState({});
+  const [classesData, setClassesData] = reactExports.useState([]);
   const toggleProfile = () => {
     setIsProfileOpen((currentValue) => !currentValue);
   };
@@ -15216,9 +15456,13 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
   const handleUpload = () => {
     window.alert("Upload: Chức năng upload file (.xlsx) sẽ được thực hiện.");
   };
-  const handleSearch = () => {
-    window.alert(`Tìm kiếm: Đang tìm kiếm: ${searchQuery} theo ${searchMode}`);
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value
+    }));
   };
+  const filteredClassesData = filterTableByColumn(classesData, filters);
   const handleEdit = (item) => {
     if (onNavigateToEdit) {
       onNavigateToEdit(item);
@@ -15226,74 +15470,158 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
     }
     window.alert("Chuyển hướng: Sẽ chuyển sang màn hình sửa với thông tin tương ứng.");
   };
-  const handleDelete = (item) => {
+  const handleDelete = async (item) => {
     if (window.confirm(`Xác nhận xoá: Bạn có chắc chắn muốn xoá lớp ${item.ma_lop}?`)) {
-      setClassesData(
-        (currentItems) => currentItems.filter((classItem) => classItem.ma_lop !== item.ma_lop)
-      );
-    }
-  };
-  const handleSelectDepartment = (selectedDepartment) => {
-    setDepartment(selectedDepartment);
-    setMajor("");
-    setDeptModalOpen(false);
-  };
-  const searchModeOptions = ["Mã lớp", "Mã HP", "Tên HP"];
-  const departmentOptions = Object.keys(majorMapping);
-  const majorOptions = department ? majorMapping[department] ?? [] : [];
-  const [regPeriodType, setRegPeriodType] = reactExports.useState("module");
-  const [regPeriodStart, setRegPeriodStart] = reactExports.useState("");
-  const [regPeriodEnd, setRegPeriodEnd] = reactExports.useState("");
-  const [savedRegPeriod, setSavedRegPeriod] = reactExports.useState(null);
-  const [isEditingPeriod, setIsEditingPeriod] = reactExports.useState(true);
-  React$2.useEffect(() => {
-    const savedData = localStorage.getItem("REGISTRATION_PERIOD");
-    if (savedData) {
       try {
-        const parsed = JSON.parse(savedData);
-        if (parsed && parsed.type !== "none") {
-          setSavedRegPeriod(parsed);
-          setRegPeriodType(parsed.type);
-          setRegPeriodStart(parsed.startTime);
-          setRegPeriodEnd(parsed.endTime);
-          setIsEditingPeriod(false);
+        const repo = new AdminClassRepositoryImpl();
+        const controller = new AdminClassController(
+          new CreateClassCourseUseCase(repo),
+          void 0,
+          new DeleteClassCourseUseCase(repo)
+        );
+        const classId = item.id;
+        if (!classId) {
+          window.alert("Lỗi: Không tìm thấy ID của lớp học");
+          return;
         }
+        await controller.deleteClassCourse(classId);
+        setClassesData(
+          (currentItems) => currentItems.filter((classItem) => classItem.ma_lop !== item.ma_lop)
+        );
       } catch (error) {
-        console.error("Lỗi khi đọc REGISTRATION_PERIOD từ localStorage", error);
+        window.alert("Xoá lớp học thất bại: " + (error.message || ""));
       }
     }
+  };
+  const [regPeriodType, setRegPeriodType] = reactExports.useState("register_program");
+  const [regPeriodStart, setRegPeriodStart] = reactExports.useState("");
+  const [regPeriodEnd, setRegPeriodEnd] = reactExports.useState("");
+  const [selectedSemester, setSelectedSemester] = reactExports.useState("");
+  const [isEditingPeriod, setIsEditingPeriod] = reactExports.useState(false);
+  const [editPeriodId, setEditPeriodId] = reactExports.useState(null);
+  const [selectedClassSemesterId, setSelectedClassSemesterId] = reactExports.useState("");
+  const [periodsData, setPeriodsData] = reactExports.useState([]);
+  const [semestersData, setSemestersData] = reactExports.useState([]);
+  const semesterRepo = new SemesterRepositoryImpl();
+  const semesterUseCase = new GetAllSemestersUseCase(semesterRepo);
+  const semesterController = new SemesterController(semesterUseCase);
+  const periodRepo = new AcademicPeriodRepositoryImpl();
+  const getAllPeriodsUseCase = new GetAllAcademicPeriodsUseCase(periodRepo);
+  const savePeriodUseCase = new SaveAcademicPeriodUseCase(periodRepo);
+  const deletePeriodUseCase = new DeleteAcademicPeriodUseCase(periodRepo);
+  const periodController = new AcademicPeriodController(getAllPeriodsUseCase, savePeriodUseCase, deletePeriodUseCase);
+  const loadData = async () => {
+    try {
+      const sData = await semesterController.getAllSemesters();
+      setSemestersData(sData);
+      if (sData.length > 0 && selectedSemester === "") {
+        setSelectedSemester(sData[0].id);
+      }
+      if (sData.length > 0 && selectedClassSemesterId === "") {
+        setSelectedClassSemesterId(sData[0].id);
+      }
+      const pData = await periodController.getAll();
+      setPeriodsData(pData);
+    } catch (error) {
+      console.error("Failed to load registration periods data", error);
+    }
+  };
+  const loadClassesData = async (semesterId) => {
+    try {
+      const repo = new AdminClassRepositoryImpl();
+      const controller = new AdminClassController(
+        new CreateClassCourseUseCase(repo),
+        void 0,
+        void 0,
+        new GetAllClassesBySemesterUseCase(repo)
+      );
+      const data = await controller.getAllClassesBySemester(semesterId);
+      const mappedData = data.map((d) => ({
+        id: d.id,
+        ky: d.ky || semesterId.toString(),
+        khoa_truong: d.khoa_truong || "",
+        ma_lop: d.ma_lop || "",
+        ma_lop_kem: d.ma_lop_kem !== "NULL" ? d.ma_lop_kem : "",
+        ma_hp: d.ma_hp || "",
+        ten_hp: d.ten_hp || "",
+        khoi_luong: d.khoi_luong || "",
+        ghi_chu: d.ghi_chu !== "NULL" ? d.ghi_chu : "",
+        thu: d.thu || "",
+        tiet_bd: d.tiet_bd || "",
+        tiet_kt: d.tiet_kt || "",
+        buoi: d.buoi || "",
+        phong_hoc: d.phong_hoc || "",
+        can_tn: d.can_tn !== "NULL" ? d.can_tn : "",
+        sl_dk: d.sl_dk?.toString() || "0",
+        sl_max: d.sl_max?.toString() || "0",
+        trang_thai: d.sl_dk >= d.sl_max && d.sl_max > 0 ? "Đã đầy" : "Mở ĐK",
+        teaching_type: d.teaching_type !== "NULL" ? d.teaching_type : ""
+      }));
+      setClassesData(mappedData);
+    } catch (error) {
+      console.error("Failed to load classes data", error);
+      setClassesData([]);
+    }
+  };
+  reactExports.useEffect(() => {
+    loadData();
   }, []);
-  const handleSaveRegistrationPeriod = () => {
-    if (!regPeriodStart || !regPeriodEnd) {
-      window.alert("Vui lòng chọn đầy đủ thời gian bắt đầu và kết thúc!");
+  reactExports.useEffect(() => {
+    if (selectedClassSemesterId !== "") {
+      loadClassesData(selectedClassSemesterId);
+    }
+  }, [selectedClassSemesterId]);
+  const handleSaveRegistrationPeriod = async () => {
+    if (!selectedSemester || !regPeriodStart || !regPeriodEnd) {
+      window.alert("Vui lòng chọn đầy đủ kỳ học và thời gian bắt đầu, kết thúc!");
       return;
     }
     if (new Date(regPeriodStart) >= new Date(regPeriodEnd)) {
       window.alert("Thời gian bắt đầu phải trước thời gian kết thúc!");
       return;
     }
-    const dataToSave = {
-      type: regPeriodType,
-      startTime: regPeriodStart,
-      endTime: regPeriodEnd
-    };
-    localStorage.setItem("REGISTRATION_PERIOD", JSON.stringify(dataToSave));
-    setSavedRegPeriod(dataToSave);
-    setIsEditingPeriod(false);
-    window.alert("Lưu cấu hình Giai đoạn đăng ký thành công!");
+    try {
+      await periodController.save({
+        id: editPeriodId || void 0,
+        semester: selectedSemester,
+        period_type: regPeriodType,
+        start_date: regPeriodStart,
+        end_date: regPeriodEnd
+      });
+      window.alert("Lưu cấu hình Giai đoạn đăng ký thành công!");
+      setIsEditingPeriod(false);
+      setEditPeriodId(null);
+      setRegPeriodStart("");
+      setRegPeriodEnd("");
+      loadData();
+    } catch (error) {
+      window.alert(error.message || "Có lỗi xảy ra.");
+    }
   };
-  const handleDeleteRegistrationPeriod = () => {
+  const handleDeleteRegistrationPeriod = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa thiết lập đợt đăng ký này?")) {
-      const dataToSave = { type: "none", startTime: "", endTime: "" };
-      localStorage.setItem("REGISTRATION_PERIOD", JSON.stringify(dataToSave));
-      setSavedRegPeriod(null);
-      setIsEditingPeriod(true);
-      setRegPeriodType("module");
+      try {
+        await periodController.delete(id);
+        loadData();
+      } catch (error) {
+        window.alert(error.message || "Xoá thất bại.");
+      }
+    }
+  };
+  const handleEditRegistrationPeriod = (period) => {
+    if (period) {
+      setEditPeriodId(period.id);
+      setSelectedSemester(period.semester);
+      setRegPeriodType(period.period_type);
+      setRegPeriodStart(period.start_date.slice(0, 16));
+      setRegPeriodEnd(period.end_date.slice(0, 16));
+    } else {
+      setEditPeriodId(null);
+      setSelectedSemester("");
+      setRegPeriodType("register_program");
       setRegPeriodStart("");
       setRegPeriodEnd("");
     }
-  };
-  const handleEditRegistrationPeriod = () => {
     setIsEditingPeriod(true);
   };
   return {
@@ -15301,28 +15629,12 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
     toggleProfile,
     handleLogout,
     handleUpload,
-    searchQuery,
-    setSearchQuery,
-    searchMode,
-    setSearchMode,
-    department,
-    setDepartment,
-    major,
-    setMajor,
-    handleSearch,
+    filters,
+    handleFilterChange,
     classesData,
+    filteredClassesData,
     handleEdit,
     handleDelete,
-    isModeModalOpen,
-    setModeModalOpen,
-    isDeptModalOpen,
-    setDeptModalOpen,
-    isMajorModalOpen,
-    setMajorModalOpen,
-    searchModeOptions,
-    departmentOptions,
-    majorOptions,
-    handleSelectDepartment,
     // Xuất thêm các thuộc tính mới
     regPeriodType,
     setRegPeriodType,
@@ -15330,32 +15642,38 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
     setRegPeriodStart,
     regPeriodEnd,
     setRegPeriodEnd,
+    selectedSemester,
+    setSelectedSemester,
+    semestersData,
+    periodsData,
     handleSaveRegistrationPeriod,
-    savedRegPeriod,
     isEditingPeriod,
+    setIsEditingPeriod,
+    editPeriodId,
+    setEditPeriodId,
     handleEditRegistrationPeriod,
-    handleDeleteRegistrationPeriod
+    handleDeleteRegistrationPeriod,
+    selectedClassSemesterId,
+    setSelectedClassSemesterId
   };
 };
 const tableHeaders = [
-  "Kỳ",
-  "Trường/Khoa",
-  "Mã lớp",
-  "Mã lớp kèm",
-  "Mã HP",
-  "Tên HP",
-  "Khối lượng",
-  "Ghi chú",
-  "Tiết BD",
-  "Tiết KT",
-  "Buổi",
-  "Phòng học",
-  "Cần TN",
-  "SLDK",
-  "SL Max",
-  "Trạng thái",
-  "TeachingType",
-  "Hành động"
+  { label: "Trường/Khoa", key: "khoa_truong" },
+  { label: "Mã lớp", key: "ma_lop" },
+  { label: "Mã lớp kèm", key: "ma_lop_kem" },
+  { label: "Mã HP", key: "ma_hp" },
+  { label: "Tên HP", key: "ten_hp" },
+  { label: "Ghi chú", key: "ghi_chu" },
+  { label: "Thứ", key: "thu" },
+  { label: "Tiết BD", key: "tiet_bd" },
+  { label: "Tiết KT", key: "tiet_kt" },
+  { label: "Buổi", key: "buoi" },
+  { label: "Phòng học", key: "phong_hoc" },
+  { label: "Cần TN", key: "can_tn" },
+  { label: "SLDK", key: "sl_dk" },
+  { label: "SL Max", key: "sl_max" },
+  { label: "TeachingType", key: "teaching_type" },
+  { label: "Hành động", key: "action" }
 ];
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -15366,27 +15684,11 @@ const AdminDashboard = () => {
     toggleProfile,
     handleLogout,
     handleUpload,
-    searchQuery,
-    setSearchQuery,
-    searchMode,
-    setSearchMode,
-    department,
-    major,
-    setMajor,
-    handleSearch,
-    classesData,
+    filters,
+    handleFilterChange,
+    filteredClassesData,
     handleEdit,
     handleDelete,
-    isModeModalOpen,
-    setModeModalOpen,
-    isDeptModalOpen,
-    setDeptModalOpen,
-    isMajorModalOpen,
-    setMajorModalOpen,
-    searchModeOptions,
-    departmentOptions,
-    majorOptions,
-    handleSelectDepartment,
     // Registration Period
     regPeriodType,
     setRegPeriodType,
@@ -15394,13 +15696,21 @@ const AdminDashboard = () => {
     setRegPeriodStart,
     regPeriodEnd,
     setRegPeriodEnd,
+    selectedSemester,
+    setSelectedSemester,
+    semestersData,
+    periodsData,
     handleSaveRegistrationPeriod,
-    savedRegPeriod,
     isEditingPeriod,
+    editPeriodId,
     handleEditRegistrationPeriod,
-    handleDeleteRegistrationPeriod
+    handleDeleteRegistrationPeriod,
+    selectedClassSemesterId,
+    setSelectedClassSemesterId
   } = useAdminDashboardViewModel(onNavigateToEdit, onLogout);
   const { isDark, toggleTheme } = useTheme();
+  const account = getCurrentAccount();
+  const displayName = account ? `${account.name} - ${account.id_card}` : "Unknown User";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "admin-container", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "nav-bar", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "nav-left", children: [
@@ -15413,19 +15723,28 @@ const AdminDashboard = () => {
       ] })
     ] }),
     isProfileOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "user-profile-popover card", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "user-name", children: "Nguyễn Tuấn Anh - PDT3636" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "user-name", children: displayName }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "logout-btn", onClick: handleLogout, children: "Đăng xuất" })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "admin-content", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "registration-setup card", style: { display: "flex", flexDirection: "column", gap: "15px", marginBottom: "20px" }, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { style: { margin: 0 }, children: "Thông tin Giai đoạn đăng ký" }),
-          !isEditingPeriod && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "edit-btn", onClick: handleEditRegistrationPeriod, style: { marginRight: "10px" }, children: "Sửa" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "delete-btn", onClick: handleDeleteRegistrationPeriod, children: "Xoá" })
-          ] })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { style: { margin: 0 }, children: "Quản lý Giai đoạn đăng ký" }),
+          !isEditingPeriod && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: () => handleEditRegistrationPeriod(), children: "Thêm đợt đăng ký mới" })
         ] }),
-        isEditingPeriod ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "20px", alignItems: "center", flexWrap: "wrap" }, children: [
+        isEditingPeriod && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "20px", alignItems: "center", flexWrap: "wrap", backgroundColor: "#f9f9f9", padding: "15px", borderRadius: "8px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "10px", alignItems: "center" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: "Kỳ học:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "select",
+              {
+                value: selectedSemester,
+                onChange: (e) => setSelectedSemester(Number(e.target.value)),
+                style: { padding: "8px", borderRadius: "4px", border: "1px solid #ccc" },
+                children: semestersData.map((sem) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: sem.id, children: sem.semester }, sem.id))
+              }
+            )
+          ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "10px", alignItems: "center" }, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: "Loại đăng ký:" }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -15435,8 +15754,8 @@ const AdminDashboard = () => {
                 onChange: (e) => setRegPeriodType(e.target.value),
                 style: { padding: "8px", borderRadius: "4px", border: "1px solid #ccc" },
                 children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "module", children: "Đăng ký Học phần" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "class", children: "Đăng ký Lớp học" })
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "register_program", children: "Đăng ký Học phần" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "register_class", children: "Đăng ký Lớp học" })
                 ]
               }
             )
@@ -15465,66 +15784,72 @@ const AdminDashboard = () => {
               }
             )
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: handleSaveRegistrationPeriod, children: "Lưu thiết lập" })
-        ] }) : savedRegPeriod ? /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table", style: { width: "100%", marginTop: "10px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: handleSaveRegistrationPeriod, children: editPeriodId ? "Cập nhật" : "Lưu" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "delete-btn", onClick: () => handleEditRegistrationPeriod(), children: "Huỷ" })
+        ] }),
+        periodsData.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table", style: { width: "100%", marginTop: "10px" }, children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Kỳ học" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Loại đăng ký" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Từ ngày" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Đến ngày" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Trạng thái" })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Trạng thái" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Hành động" })
           ] }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: savedRegPeriod.type === "module" ? "Đăng ký Học phần" : "Đăng ký Lớp học" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: new Date(savedRegPeriod.startTime).toLocaleString("vi-VN") }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: new Date(savedRegPeriod.endTime).toLocaleString("vi-VN") }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "status-cell", style: { fontWeight: "bold", color: /* @__PURE__ */ new Date() >= new Date(savedRegPeriod.startTime) && /* @__PURE__ */ new Date() <= new Date(savedRegPeriod.endTime) ? "#4CAF50" : "#f44336" }, children: /* @__PURE__ */ new Date() >= new Date(savedRegPeriod.startTime) && /* @__PURE__ */ new Date() <= new Date(savedRegPeriod.endTime) ? "ĐANG MỞ" : "ĐÃ ĐÓNG" })
-          ] }) })
-        ] }) : null
+          /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: periodsData.map((period) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: period.semester_name || period.semester }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: period.period_type === "register_program" ? "Đăng ký Học phần" : "Đăng ký Lớp học" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: new Date(period.start_date).toLocaleString("vi-VN") }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: new Date(period.end_date).toLocaleString("vi-VN") }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "status-cell", style: { fontWeight: "bold", color: period.is_active === 1 ? "#4CAF50" : "#f44336" }, children: period.is_active === 1 ? "ĐANG DIỄN RA" : "ĐÃ KẾT THÚC" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "detail-btn", onClick: () => navigate("/admin/program-registration-details", { state: { semester: period.semester, semesterString: semestersData.find((s) => s.id === period.semester)?.semester } }), style: { marginRight: "8px" }, children: "Xem chi tiết" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "edit-btn-yellow", onClick: () => handleEditRegistrationPeriod(period), style: { marginRight: "8px" }, children: "Sửa" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "delete-btn", onClick: () => handleDeleteRegistrationPeriod(period.id), children: "Xoá" })
+            ] })
+          ] }, period.id)) })
+        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { textAlign: "center", color: "#666" }, children: "Chưa có đợt đăng ký nào được thiết lập." })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "action-bar card", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "action-bar card", style: { display: "flex", alignItems: "flex-start" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: "15px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { style: { margin: 0 }, children: "Quản lý danh sách lớp học" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "select",
+            {
+              value: selectedClassSemesterId,
+              onChange: (e) => setSelectedClassSemesterId(Number(e.target.value)),
+              style: { padding: "8px", borderRadius: "4px", border: "1px solid #ccc" },
+              children: semestersData.map((sem) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: sem.id, children: sem.semester }, sem.id))
+            }
+          )
+        ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "upload-section", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: handleUpload, children: "Upload file" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "hint-text", children: "* chỉ up file .xlsx" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "search-box", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              type: "text",
-              placeholder: "Nhập thông tin tìm kiếm...",
-              value: searchQuery,
-              onChange: (e) => setSearchQuery(e.target.value),
-              className: "search-input"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "dropdown-row", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "dropdown-btn", onClick: () => setModeModalOpen(true), children: [
-              "Tìm theo: ",
-              searchMode
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "dropdown-btn", onClick: () => setDeptModalOpen(true), children: [
-              "Khoa/Trường: ",
-              department || "Chọn"
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "dropdown-btn", onClick: () => setMajorModalOpen(true), children: [
-              "Ngành: ",
-              major || "Chọn"
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "search-btn", onClick: handleSearch, children: "Tìm kiếm" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "hint-text", style: { marginLeft: "10px" }, children: "* chỉ up file .xlsx" })
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("section", { className: "table-wrapper card", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-scroll", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "admin-table", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: tableHeaders.map((header, idx) => /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: header }, idx)) }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: classesData.map((item, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.ky }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: tableHeaders.map((header, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("th", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: header.label }),
+          header.key !== "action" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "text",
+              placeholder: "Lọc...",
+              value: filters[header.key] || "",
+              onChange: (e) => handleFilterChange(header.key, e.target.value),
+              style: { width: "100%", marginTop: "5px", padding: "4px", boxSizing: "border-box" }
+            }
+          )
+        ] }, idx)) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: filteredClassesData.map((item, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.khoa_truong }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.ma_lop }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.ma_lop_kem }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.ma_hp }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.ten_hp }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.khoi_luong }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.ghi_chu }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.thu }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.tiet_bd }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.tiet_kt }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.buoi }),
@@ -15532,7 +15857,6 @@ const AdminDashboard = () => {
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.can_tn }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.sl_dk }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.sl_max }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.trang_thai }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.teaching_type }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "action-cell", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "edit-btn", onClick: () => handleEdit(item), children: "Sửa" }),
@@ -15540,179 +15864,780 @@ const AdminDashboard = () => {
           ] }) })
         ] }, idx)) })
       ] }) }) })
-    ] }),
-    isModeModalOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-overlay", onClick: () => setModeModalOpen(false), children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal-content card", onClick: (e) => e.stopPropagation(), children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Chọn chế độ tìm kiếm" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-list", children: searchModeOptions.map((opt) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-        setSearchMode(opt);
-        setModeModalOpen(false);
-      }, children: opt }, opt)) })
-    ] }) }),
-    isDeptModalOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-overlay", onClick: () => setDeptModalOpen(false), children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal-content card", onClick: (e) => e.stopPropagation(), children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Chọn Khoa/Trường" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-list", children: departmentOptions.map((opt) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleSelectDepartment(opt), children: opt }, opt)) })
-    ] }) }),
-    isMajorModalOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-overlay", onClick: () => setMajorModalOpen(false), children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal-content card", onClick: (e) => e.stopPropagation(), children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Chọn Ngành" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-list", children: majorOptions.map((opt) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-        setMajor(opt);
-        setMajorModalOpen(false);
-      }, children: opt }, opt)) })
-    ] }) })
+    ] })
   ] });
 };
-const createInitialValues = (initialData) => ({
-  ky: initialData?.ky ?? "",
-  khoa_truong: initialData?.khoa_truong ?? "",
-  ma_lop: initialData?.ma_lop ?? "",
-  ma_lop_kem: initialData?.ma_lop_kem ?? "",
-  ma_hp: initialData?.ma_hp ?? "",
-  ten_hp: initialData?.ten_hp ?? "",
-  khoi_luong: initialData?.khoi_luong ?? "",
-  ghi_chu: initialData?.ghi_chu ?? "",
-  tiet_bd: initialData?.tiet_bd ?? "",
-  tiet_kt: initialData?.tiet_kt ?? "",
-  buoi: initialData?.buoi ?? "",
-  phong_hoc: initialData?.phong_hoc ?? "",
-  can_tn: initialData?.can_tn ?? "",
-  sl_dk: initialData?.sl_dk ?? "",
-  sl_max: initialData?.sl_max ?? "",
-  trang_thai: initialData?.trang_thai ?? "",
-  teaching_type: initialData?.teaching_type ?? ""
-});
-const useAdminEditClassViewModel = (onGoBack, initialData) => {
-  const [formValues, setFormValues] = reactExports.useState(
-    createInitialValues(initialData)
-  );
-  const handleInputChange = (key, value) => {
-    setFormValues((currentValues) => ({
-      ...currentValues,
+class UpdateClassCourseUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  async execute(id, data) {
+    if (!id) {
+      throw new Error("Missing class ID for update.");
+    }
+    await this.repository.updateClassCourse(id, data);
+  }
+}
+const useAdminCreateClassViewModel = (initialState, onNavigateBack, isEdit = false) => {
+  const [formData, setFormData] = reactExports.useState({
+    id: initialState.id,
+    ky: initialState.ky || "",
+    truong_khoa: initialState.truong_khoa || "",
+    ma_hp: initialState.ma_hp || "",
+    ten_hp: initialState.ten_hp || "",
+    ma_lop: initialState.ma_lop || "",
+    ma_lop_kem: initialState.ma_lop_kem || "",
+    ghi_chu: initialState.ghi_chu || "",
+    thu: initialState.thu || "",
+    tiet_bd: initialState.tiet_bd || "",
+    tiet_kt: initialState.tiet_kt || "",
+    buoi: initialState.buoi || "Sáng",
+    phong_hoc: initialState.phong_hoc || "",
+    can_tn: initialState.can_tn || "",
+    sl_max: initialState.sl_max || "",
+    teaching_type: initialState.teaching_type || ""
+  });
+  const handleChange = (key, value) => {
+    setFormData((prev) => ({
+      ...prev,
       [key]: value
     }));
   };
-  const handleSave = () => {
-    window.alert("Thành công: Đã lưu thông tin lớp học!");
-  };
-  const handleGoBack = () => {
-    if (onGoBack) {
-      onGoBack();
+  const handleSave = async () => {
+    if (!formData.ma_lop || !formData.thu || !formData.tiet_bd || !formData.tiet_kt || !formData.buoi || !formData.phong_hoc || !formData.sl_max) {
+      window.alert("Vui lòng điền đầy đủ các thông tin bắt buộc (có dấu *)");
       return;
     }
-    window.alert("Quay lại: Sẽ quay lại màn hình chính");
+    const payload = {
+      ...formData,
+      ma_lop_kem: formData.ma_lop_kem || "NULL",
+      ghi_chu: formData.ghi_chu || "NULL",
+      can_tn: formData.can_tn || "NULL",
+      teaching_type: formData.teaching_type || "NULL"
+    };
+    try {
+      if (isEdit) {
+        if (!formData.id) {
+          window.alert("Lỗi: Không tìm thấy ID lớp học để cập nhật");
+          return;
+        }
+        const repository = new AdminClassRepositoryImpl();
+        const updateUseCase = new UpdateClassCourseUseCase(repository);
+        const controller = new AdminClassController(new CreateClassCourseUseCase(repository), void 0, void 0, void 0, updateUseCase);
+        await controller.updateClassCourse(formData.id, payload);
+        window.alert("Thành công: Đã cập nhật thông tin lớp học!");
+        onNavigateBack();
+      } else {
+        const repository = new AdminClassRepositoryImpl();
+        const useCase = new CreateClassCourseUseCase(repository);
+        const controller = new AdminClassController(useCase);
+        await controller.createClassCourse(payload);
+        window.alert("Thành công: Đã lưu lớp học mới!");
+        onNavigateBack();
+      }
+    } catch (error) {
+      window.alert("Lỗi khi lưu lớp học: " + (error.message || "Lỗi hệ thống"));
+    }
   };
   return {
-    formValues,
-    handleInputChange,
-    handleSave,
-    handleGoBack
+    formData,
+    handleChange,
+    handleSave
   };
 };
-const fields = [
-  { key: "ky", label: "Kỳ" },
-  { key: "khoa_truong", label: "Trường/Khoa" },
-  { key: "ma_lop", label: "Mã lớp" },
-  { key: "ma_lop_kem", label: "Mã lớp kèm" },
-  { key: "ma_hp", label: "Mã học phần" },
-  { key: "ten_hp", label: "Tên học phần" },
-  { key: "khoi_luong", label: "Khối lượng" },
-  { key: "ghi_chu", label: "Ghi chú" },
-  { key: "tiet_bd", label: "Tiết bắt đầu" },
-  { key: "tiet_kt", label: "Tiết kết thúc" },
-  { key: "buoi", label: "Buổi" },
-  { key: "phong_hoc", label: "Phòng học" },
-  { key: "can_tn", label: "Cần thí nghiệm" },
-  { key: "sl_dk", label: "Số lượng đăng ký" },
-  { key: "sl_max", label: "Số lượng tối đa" },
-  { key: "trang_thai", label: "Trạng thái" },
-  { key: "teaching_type", label: "Teaching Type" }
-];
-const AdminEditClass = () => {
-  const navigate = useNavigate();
+const AdminCreateClass = () => {
   const location = useLocation();
-  const initialData = location.state?.classData;
-  const onGoBack = () => navigate("/admin");
-  const { formValues, handleInputChange, handleSave, handleGoBack } = useAdminEditClassViewModel(onGoBack, initialData);
-  const { toggleTheme, isDark } = useTheme();
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "edit-container", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "edit-header", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "header-left", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "back-btn", onClick: handleGoBack, children: "← Quay lại" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "header-title", children: "Chỉnh sửa thông tin lớp học" })
+  const navigate = useNavigate();
+  const { isDark, toggleTheme } = useTheme();
+  const classData = location.state?.classData;
+  const isEdit = !!classData;
+  const initialState = isEdit ? {
+    id: classData.id,
+    ky: classData.ky,
+    truong_khoa: classData.khoa_truong,
+    ma_hp: classData.ma_hp,
+    ten_hp: classData.ten_hp,
+    ma_lop: classData.ma_lop,
+    ma_lop_kem: classData.ma_lop_kem,
+    ghi_chu: classData.ghi_chu,
+    thu: classData.thu,
+    tiet_bd: classData.tiet_bd,
+    tiet_kt: classData.tiet_kt,
+    buoi: classData.buoi,
+    phong_hoc: classData.phong_hoc,
+    can_tn: classData.can_tn,
+    sl_max: classData.sl_max,
+    teaching_type: classData.teaching_type
+  } : location.state || {};
+  const onNavigateBack = () => {
+    navigate(-1);
+  };
+  const { formData, handleChange, handleSave } = useAdminCreateClassViewModel(
+    initialState,
+    onNavigateBack,
+    isEdit
+  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "admin-container", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "nav-bar", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "nav-left", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: hustLogo, alt: "Logo", className: "nav-logo" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "nav-title", children: isEdit ? "Chỉnh sửa Lớp Học" : "Tạo Lớp Học Mới" })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-btn", onClick: toggleTheme, children: isDark ? "☀️" : "🌙" })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "edit-content", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "edit-card card", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid-form", children: fields.map((field) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "input-group", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "label", children: field.label }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            className: "input",
-            value: formValues[field.key],
-            onChange: (e) => handleInputChange(field.key, e.target.value)
-          }
-        )
-      ] }, field.key)) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "form-actions", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "save-btn primary-btn", onClick: handleSave, children: "Lưu thay đổi" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "cancel-btn", onClick: handleGoBack, children: "Huỷ bỏ" })
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "nav-right", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-btn", onClick: toggleTheme, children: isDark ? "☀️" : "🌙" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "profile-trigger", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: hustLogo, alt: "Avatar", className: "avatar" }) })
       ] })
-    ] }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "admin-content", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "card", style: { marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { style: { margin: 0 }, children: isEdit ? "Cập nhật thông tin lớp học" : "Nhập thông tin lớp học" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "delete-btn", onClick: onNavigateBack, children: "Quay lại" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "card", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: "Kỳ học:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.ky, disabled: true, style: { width: "100%", padding: "8px", boxSizing: "border-box", backgroundColor: "#e9ecef", cursor: "not-allowed", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: "Trường/Khoa:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.truong_khoa, disabled: true, style: { width: "100%", padding: "8px", boxSizing: "border-box", backgroundColor: "#e9ecef", cursor: "not-allowed", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: "Mã Học Phần:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.ma_hp, disabled: true, style: { width: "100%", padding: "8px", boxSizing: "border-box", backgroundColor: "#e9ecef", cursor: "not-allowed", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: "Tên Học Phần:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.ten_hp, disabled: true, style: { width: "100%", padding: "8px", boxSizing: "border-box", backgroundColor: "#e9ecef", cursor: "not-allowed", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+              "Mã lớp: ",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "red" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.ma_lop, onChange: (e) => handleChange("ma_lop", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: "Mã lớp kèm:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.ma_lop_kem, onChange: (e) => handleChange("ma_lop_kem", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: "Ghi chú:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.ghi_chu, onChange: (e) => handleChange("ghi_chu", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+              "Thứ: ",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "red" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.thu, onChange: (e) => handleChange("thu", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+              "Tiết Bắt Đầu: ",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "red" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.tiet_bd, onChange: (e) => handleChange("tiet_bd", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+              "Tiết Kết Thúc: ",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "red" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.tiet_kt, onChange: (e) => handleChange("tiet_kt", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+              "Buổi: ",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "red" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: formData.buoi, onChange: (e) => handleChange("buoi", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Sáng", children: "Sáng" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Chiều", children: "Chiều" })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+              "Phòng học: ",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "red" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.phong_hoc, onChange: (e) => handleChange("phong_hoc", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: "Cần TN:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.can_tn, onChange: (e) => handleChange("can_tn", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+              "SL Max: ",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "red" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.sl_max, onChange: (e) => handleChange("sl_max", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" } })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: "Teaching Type:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: formData.teaching_type, onChange: (e) => handleChange("teaching_type", e.target.value), style: { width: "100%", padding: "8px", boxSizing: "border-box", marginTop: "5px" } })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: "20px", display: "flex", justifyContent: "flex-end", gap: "10px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "delete-btn", onClick: onNavigateBack, children: "Huỷ" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: handleSave, children: "Lưu thông tin" })
+        ] })
+      ] })
+    ] })
   ] });
 };
-const useStudentDashboardViewModel = (onLogout) => {
+class CourseRegistrationStat {
+  constructor(course_id, ma_hp, ten_hp, truong_khoa, so_luong_dang_ky, so_luong_lop, so_luong_dk_toi_da) {
+    this.course_id = course_id;
+    this.ma_hp = ma_hp;
+    this.ten_hp = ten_hp;
+    this.truong_khoa = truong_khoa;
+    this.so_luong_dang_ky = so_luong_dang_ky;
+    this.so_luong_lop = so_luong_lop;
+    this.so_luong_dk_toi_da = so_luong_dk_toi_da;
+  }
+}
+class AdminRepositoryImpl {
+  async getCourseRegistrationStats(semester) {
+    try {
+      const data = await apiClient.get(`/admin/course-registration-stats?semester=${semester}`);
+      return data.map((item) => new CourseRegistrationStat(
+        item.course_id,
+        item.ma_hp,
+        item.ten_hp,
+        item.truong_khoa,
+        item.so_luong_dang_ky,
+        item.so_luong_lop,
+        item.so_luong_dk_toi_da
+      ));
+    } catch (error) {
+      console.error("AdminRepositoryImpl getCourseRegistrationStats error:", error);
+      throw new Error(error.message || "Lỗi kết nối tới máy chủ.");
+    }
+  }
+}
+class GetCourseRegistrationStatsUseCase {
+  constructor(adminRepository) {
+    this.adminRepository = adminRepository;
+  }
+  async execute(semester) {
+    return this.adminRepository.getCourseRegistrationStats(semester);
+  }
+}
+class AdminController {
+  constructor(getCourseRegistrationStatsUseCase) {
+    this.getCourseRegistrationStatsUseCase = getCourseRegistrationStatsUseCase;
+  }
+  async getCourseRegistrationStats(semester) {
+    return this.getCourseRegistrationStatsUseCase.execute(semester);
+  }
+}
+class GetClassesByCourseUseCase {
+  constructor(adminClassRepository) {
+    this.adminClassRepository = adminClassRepository;
+  }
+  async execute(semester, courseId) {
+    return await this.adminClassRepository.getClassesByCourse(semester, courseId);
+  }
+}
+const useAdminCourseRegistrationDetailsViewModel = (semester) => {
+  const [stats, setStats] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(false);
+  const [error, setError] = reactExports.useState(null);
+  const [filterMaHp, setFilterMaHp] = reactExports.useState("");
+  const [filterTenHp, setFilterTenHp] = reactExports.useState("");
+  const [filterTruongKhoa, setFilterTruongKhoa] = reactExports.useState("");
+  const [filterSoLuong, setFilterSoLuong] = reactExports.useState("");
+  const [expandedCourseId, setExpandedCourseId] = reactExports.useState(null);
+  const [courseClasses, setCourseClasses] = reactExports.useState({});
+  const [loadingClasses, setLoadingClasses] = reactExports.useState(false);
+  const getAdminClassController = () => {
+    const repo = new AdminClassRepositoryImpl();
+    const getUseCase = new GetClassesByCourseUseCase(repo);
+    const deleteUseCase = new DeleteClassCourseUseCase(repo);
+    const createUseCase = new CreateClassCourseUseCase(repo);
+    return new AdminClassController(createUseCase, getUseCase, deleteUseCase);
+  };
+  reactExports.useEffect(() => {
+    if (!semester) return;
+    const loadStats = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const adminRepo = new AdminRepositoryImpl();
+        const useCase = new GetCourseRegistrationStatsUseCase(adminRepo);
+        const controller = new AdminController(useCase);
+        const data = await controller.getCourseRegistrationStats(semester);
+        setStats(data);
+      } catch (err) {
+        setError(err.message || "Có lỗi xảy ra khi tải dữ liệu thống kê");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadStats();
+  }, [semester]);
+  const filteredStats = stats.filter((stat) => {
+    return stat.ma_hp.toLowerCase().includes(filterMaHp.toLowerCase()) && stat.ten_hp.toLowerCase().includes(filterTenHp.toLowerCase()) && (stat.truong_khoa || "").toLowerCase().includes(filterTruongKhoa.toLowerCase()) && stat.so_luong_dang_ky.toString().includes(filterSoLuong);
+  });
+  const toggleExpandCourse = async (courseId, sem) => {
+    if (expandedCourseId === courseId) {
+      setExpandedCourseId(null);
+      return;
+    }
+    setExpandedCourseId(courseId);
+    if (!courseClasses[courseId]) {
+      setLoadingClasses(true);
+      try {
+        const controller = getAdminClassController();
+        const classes = await controller.getClassesByCourse(sem, courseId);
+        setCourseClasses((prev) => ({ ...prev, [courseId]: classes }));
+      } catch (err) {
+        window.alert("Lỗi khi tải danh sách lớp: " + (err.message || ""));
+      } finally {
+        setLoadingClasses(false);
+      }
+    }
+  };
+  const handleDeleteClass = async (classId, courseId, sem) => {
+    if (window.confirm("Bạn có chắc chắn muốn xoá lớp học này?")) {
+      try {
+        const controller = getAdminClassController();
+        await controller.deleteClassCourse(classId);
+        window.alert("Xoá lớp thành công!");
+        setLoadingClasses(true);
+        const classes = await controller.getClassesByCourse(sem, courseId);
+        setCourseClasses((prev) => ({ ...prev, [courseId]: classes }));
+      } catch (err) {
+        window.alert("Lỗi khi xoá lớp: " + (err.message || ""));
+      } finally {
+        setLoadingClasses(false);
+      }
+    }
+  };
+  const handleEditClass = (classItem) => {
+    window.alert("Chuyển hướng: Sẽ chuyển sang màn hình sửa với thông tin tương ứng. (Tính năng đang phát triển)");
+  };
+  return {
+    stats: filteredStats,
+    loading,
+    error,
+    filterMaHp,
+    setFilterMaHp,
+    filterTenHp,
+    setFilterTenHp,
+    filterTruongKhoa,
+    setFilterTruongKhoa,
+    filterSoLuong,
+    setFilterSoLuong,
+    expandedCourseId,
+    courseClasses,
+    loadingClasses,
+    toggleExpandCourse,
+    handleDeleteClass,
+    handleEditClass
+  };
+};
+const AdminCourseRegistrationDetails = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { isDark, toggleTheme } = useTheme();
+  const semester = location.state?.semester || null;
+  const semesterString = location.state?.semesterString || semester;
+  const {
+    stats,
+    loading,
+    error,
+    filterMaHp,
+    setFilterMaHp,
+    filterTenHp,
+    setFilterTenHp,
+    filterTruongKhoa,
+    setFilterTruongKhoa,
+    filterSoLuong,
+    setFilterSoLuong,
+    expandedCourseId,
+    courseClasses,
+    loadingClasses,
+    toggleExpandCourse,
+    handleDeleteClass
+  } = useAdminCourseRegistrationDetailsViewModel(semester);
+  const handleBack = () => {
+    navigate(-1);
+  };
+  const handleEditClass = (cls, stat) => {
+    const classData = {
+      id: cls.id,
+      ky: semesterString,
+      khoa_truong: stat.truong_khoa,
+      ma_hp: stat.ma_hp,
+      ten_hp: stat.ten_hp,
+      ma_lop: cls.ma_lop,
+      ma_lop_kem: cls.ma_lop_kem !== "NULL" ? cls.ma_lop_kem : "",
+      ghi_chu: cls.ghi_chu !== "NULL" ? cls.ghi_chu : "",
+      thu: cls.thu,
+      tiet_bd: cls.tiet_bd,
+      tiet_kt: cls.tiet_kt,
+      buoi: cls.buoi,
+      phong_hoc: cls.phong_hoc,
+      can_tn: cls.can_tn !== "NULL" ? cls.can_tn : "",
+      sl_max: cls.sl_max,
+      sl_dk: cls.sl_dk,
+      teaching_type: cls.teaching_type !== "NULL" ? cls.teaching_type : ""
+    };
+    navigate("/admin/edit", { state: { classData } });
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "admin-container", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "nav-bar", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "nav-left", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: hustLogo, alt: "Logo", className: "nav-logo" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "nav-title", children: "Chi tiết Đăng ký Học phần" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "nav-right", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-btn", onClick: toggleTheme, children: isDark ? "☀️" : "🌙" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "profile-trigger", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: hustLogo, alt: "Avatar", className: "avatar" }) })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "admin-content", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "card", style: { marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { style: { margin: 0 }, children: [
+          "Kỳ học: ",
+          semesterString || "Không xác định"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "delete-btn", onClick: handleBack, children: "Quay lại" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "table-wrapper card", children: [
+        loading && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Đang tải dữ liệu..." }),
+        error && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { color: "red" }, children: error }),
+        !loading && !error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-scroll", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "admin-table", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("th", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Mã HP" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "text",
+                  placeholder: "Lọc...",
+                  value: filterMaHp,
+                  onChange: (e) => setFilterMaHp(e.target.value),
+                  style: { width: "100%", marginTop: "5px", padding: "4px", boxSizing: "border-box" }
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("th", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Tên HP" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "text",
+                  placeholder: "Lọc...",
+                  value: filterTenHp,
+                  onChange: (e) => setFilterTenHp(e.target.value),
+                  style: { width: "100%", marginTop: "5px", padding: "4px", boxSizing: "border-box" }
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("th", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Trường/Khoa" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "text",
+                  placeholder: "Lọc...",
+                  value: filterTruongKhoa,
+                  onChange: (e) => setFilterTruongKhoa(e.target.value),
+                  style: { width: "100%", marginTop: "5px", padding: "4px", boxSizing: "border-box" }
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("th", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Số lượng đăng ký" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "text",
+                  placeholder: "Lọc...",
+                  value: filterSoLuong,
+                  onChange: (e) => setFilterSoLuong(e.target.value),
+                  style: { width: "100%", marginTop: "5px", padding: "4px", boxSizing: "border-box" }
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Số lượng lớp" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Số lượng ĐK tối đa" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Trạng thái" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Hành động" })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+            stats.map((stat, idx) => {
+              let trangThai = "Đã đáp ứng đủ";
+              if (stat.so_luong_lop === 0) {
+                trangThai = "Chưa có lớp";
+              } else if (stat.so_luong_dk_toi_da < stat.so_luong_dang_ky) {
+                trangThai = "Chưa phục vụ đủ sinh viên";
+              }
+              return /* @__PURE__ */ jsxRuntimeExports.jsxs(React$2.Fragment, { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: stat.ma_hp }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: stat.ten_hp }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: stat.truong_khoa }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: stat.so_luong_dang_ky }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: stat.so_luong_lop }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: stat.so_luong_dk_toi_da }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: {
+                    color: trangThai === "Đã đáp ứng đủ" ? "green" : "#ff4d4f",
+                    fontWeight: "bold"
+                  }, children: trangThai }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", style: { marginRight: "5px", fontSize: "12px", padding: "5px 10px" }, onClick: () => navigate("/admin/create-class", {
+                      state: {
+                        ky: semesterString,
+                        truong_khoa: stat.truong_khoa,
+                        ma_hp: stat.ma_hp,
+                        ten_hp: stat.ten_hp
+                      }
+                    }), children: "Mở lớp" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "secondary-btn", style: { fontSize: "12px", padding: "5px 10px" }, onClick: () => toggleExpandCourse(stat.course_id, semester), children: expandedCourseId === stat.course_id ? "Đóng danh sách" : "Xem danh sách lớp" })
+                  ] })
+                ] }),
+                expandedCourseId === stat.course_id && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { style: { backgroundColor: "#f9f9f9" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 8, style: { padding: "20px" }, children: loadingClasses && !courseClasses[stat.course_id] ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Đang tải danh sách lớp..." }) : (courseClasses[stat.course_id] || []).length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { textAlign: "center", fontStyle: "italic", margin: 0 }, children: "Chưa có lớp học nào" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "admin-table", style: { margin: 0 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã lớp" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã lớp kèm" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Ghi chú" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Thứ" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Tiết BĐ" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Tiết KT" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Buổi" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Phòng học" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Cần TN" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "SL ĐK" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "SL Max" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Loại" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Hành động" })
+                  ] }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: (courseClasses[stat.course_id] || []).map((cls, cIdx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.ma_lop }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.ma_lop_kem !== "NULL" ? cls.ma_lop_kem : "" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.ghi_chu !== "NULL" ? cls.ghi_chu : "" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.thu !== "NULL" && cls.thu !== void 0 ? cls.thu : "" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.tiet_bd }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.tiet_kt }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.buoi }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.phong_hoc }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.can_tn !== "NULL" ? cls.can_tn : "" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.sl_dk }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.sl_max }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.teaching_type !== "NULL" ? cls.teaching_type : "" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "action-cell", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "edit-btn", style: { fontSize: "10px", padding: "3px 6px" }, onClick: () => handleEditClass(cls, stat), children: "Sửa" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "delete-btn", style: { fontSize: "10px", padding: "3px 6px" }, onClick: () => handleDeleteClass(cls.id, stat.course_id, semester), children: "Xoá" })
+                    ] }) })
+                  ] }, cIdx)) })
+                ] }) }) }, `expanded-${stat.course_id}`)
+              ] }, idx);
+            }),
+            stats.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 8, style: { textAlign: "center" }, children: "Không có dữ liệu phù hợp" }) })
+          ] })
+        ] }) })
+      ] })
+    ] })
+  ] });
+};
+class ManageStudentRegistration {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  getCurriculum(studentId) {
+    return this.repository.getCurriculum(studentId);
+  }
+  getRegisteredCourses(studentId) {
+    return this.repository.getRegisteredCourses(studentId);
+  }
+  searchCourseSuggestions(studentId, query) {
+    if (!query.trim()) {
+      return Promise.resolve([]);
+    }
+    return this.repository.searchCourseSuggestions(studentId, query.trim());
+  }
+  registerCourse(studentId, courseId) {
+    return this.repository.registerCourse(studentId, courseId);
+  }
+  cancelCourseRegistration(studentId, courseId) {
+    return this.repository.cancelCourseRegistration(studentId, courseId);
+  }
+  searchClassSuggestions(studentId, query) {
+    if (!query.trim()) {
+      return Promise.resolve([]);
+    }
+    return this.repository.searchClassSuggestions(studentId, query.trim());
+  }
+  registerClass(studentId, classId) {
+    return this.repository.registerClass(studentId, classId);
+  }
+  getClassesForCourse(studentId, courseId) {
+    return this.repository.getClassesForCourse(studentId, courseId);
+  }
+  getTimetable(studentId) {
+    return this.repository.getTimetable(studentId);
+  }
+}
+class StudentRegistrationRepositoryImpl {
+  getCurriculum(studentId) {
+    return apiClient.get(`/students/${studentId}/curriculum`);
+  }
+  getRegisteredCourses(studentId) {
+    return apiClient.get(
+      `/students/${studentId}/registered-courses`
+    );
+  }
+  searchCourseSuggestions(studentId, query) {
+    return apiClient.get(
+      `/students/${studentId}/course-suggestions?q=${encodeURIComponent(query)}`
+    );
+  }
+  registerCourse(studentId, courseId) {
+    return apiClient.post(
+      `/students/${studentId}/course-registrations`,
+      { courseId }
+    );
+  }
+  cancelCourseRegistration(studentId, courseId) {
+    return apiClient.delete(`/students/${studentId}/course-registrations/${courseId}`);
+  }
+  searchClassSuggestions(studentId, query) {
+    return apiClient.get(
+      `/students/${studentId}/class-suggestions?q=${encodeURIComponent(query)}`
+    );
+  }
+  async registerClass(studentId, classId) {
+    await apiClient.post(`/students/${studentId}/class-registrations`, {
+      classId
+    });
+  }
+  getClassesForCourse(studentId, courseId) {
+    return apiClient.get(
+      `/students/${studentId}/courses/${courseId}/classes`
+    );
+  }
+  getTimetable(studentId) {
+    return apiClient.get(`/students/${studentId}/timetable`);
+  }
+}
+const registrationUseCase$1 = new ManageStudentRegistration(
+  new StudentRegistrationRepositoryImpl()
+);
+function toStatusLabel(status) {
+  if (status === "completed") return "Đã học";
+  if (status === "registered") return "Học phần chưa hoàn thành";
+  if (status === "re_registered") return "Học cải thiện";
+  if (status === "cancelled") return "Đã hủy";
+  return status;
+}
+function parseTimetableEvents(entries) {
+  return entries.flatMap((entry) => {
+    if (!entry.detail) return [];
+    try {
+      const detail = JSON.parse(entry.detail);
+      const slots = Array.isArray(detail) ? detail : detail.slots;
+      if (!Array.isArray(slots)) return [];
+      return slots.flatMap((slot) => {
+        const periods = Array.isArray(slot.periods) ? slot.periods : [slot.period].filter(Boolean);
+        return periods.map((period) => ({
+          day: slot.day,
+          period,
+          name: entry.code
+        }));
+      });
+    } catch (_err) {
+      return [];
+    }
+  });
+}
+const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
+  const studentId = account?.id ?? 1;
+  const status = account?.status ?? "study";
   const [isUserInfoVisible, setIsUserInfoVisible] = reactExports.useState(false);
   const [searchQuery, setSearchQuery] = reactExports.useState("");
   const [isSuggestionVisible, setIsSuggestionVisible] = reactExports.useState(false);
-  const [registeredSubjects, setRegisteredSubjects] = reactExports.useState([
-    { id: "1", code: "IT3040", name: "Kỹ thuật phần mềm", status: "Thành công", credits: 3 },
-    { id: "2", code: "IT3020", name: "Toán rời rạc", status: "Thành công", credits: 3 }
-  ]);
+  const [suggestions, setSuggestions] = reactExports.useState([]);
+  const [selectedSuggestion, setSelectedSuggestion] = reactExports.useState(null);
+  const [isSearching, setIsSearching] = reactExports.useState(false);
+  const [searchError, setSearchError] = reactExports.useState(null);
+  const [registeredSubjects, setRegisteredSubjects] = reactExports.useState([]);
+  const [timeGridEvents, setTimeGridEvents] = reactExports.useState([]);
   const [currentRegPeriodType, setCurrentRegPeriodType] = reactExports.useState("none");
-  const allowedSubjects = React$2.useMemo(() => [
-    { code: "IT4060", name: "Thiết kế hệ thống mạng", credits: 3 },
-    { code: "MI2010", name: "Toán cao cấp", credits: 4 },
-    { code: "IT1110", name: "Tin học đại cương", credits: 4 },
-    { code: "IT2120", name: "Kiến trúc máy tính", credits: 3 }
-  ], []);
-  const suggestedSubjects = React$2.useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const query = searchQuery.trim().toLowerCase();
-    return allowedSubjects.filter(
-      (sub) => sub.code.toLowerCase().includes(query) || sub.name.toLowerCase().includes(query)
+  const [isSubmitting, setIsSubmitting] = reactExports.useState(false);
+  const [alarmMessage, setAlarmMessage] = reactExports.useState(null);
+  const [courseIdToDelete, setCourseIdToDelete] = reactExports.useState(null);
+  const [activeSemesterId, setActiveSemesterId] = reactExports.useState(null);
+  const [activeSemesterName, setActiveSemesterName] = reactExports.useState(null);
+  const [expandedCourseIds, setExpandedCourseIds] = reactExports.useState(/* @__PURE__ */ new Set());
+  const [courseClassesData, setCourseClassesData] = reactExports.useState({});
+  const [isLoadingClasses, setIsLoadingClasses] = reactExports.useState({});
+  const reloadStudentData = async () => {
+    const [registeredCourses, timetable] = await Promise.all([
+      registrationUseCase$1.getRegisteredCourses(studentId),
+      registrationUseCase$1.getTimetable(studentId)
+    ]);
+    setRegisteredSubjects(
+      registeredCourses.map((course) => ({
+        id: String(course.id),
+        courseId: course.courseId,
+        semester: course.semester,
+        code: course.code,
+        name: course.name,
+        credits: course.credits,
+        rawStatus: course.status,
+        status: toStatusLabel(course.status)
+      }))
     );
-  }, [searchQuery, allowedSubjects]);
-  const handleSelectSuggestion = (code) => {
-    setSearchQuery(code);
+    setTimeGridEvents(parseTimetableEvents(timetable));
+  };
+  const handleSelectSuggestion = (item) => {
+    setSelectedSuggestion(item);
+    setSearchQuery(item.code);
     setIsSuggestionVisible(false);
   };
   const handleSearchQueryChange = (val) => {
     setSearchQuery(val);
+    setSelectedSuggestion(null);
     setIsSuggestionVisible(true);
   };
-  React$2.useEffect(() => {
-    const checkRegistrationPeriod = () => {
-      const savedData = localStorage.getItem("REGISTRATION_PERIOD");
-      if (savedData) {
-        try {
-          const parsed = JSON.parse(savedData);
-          if (parsed.type === "none") {
-            setCurrentRegPeriodType("none");
-            return;
-          }
+  reactExports.useEffect(() => {
+    const checkRegistrationPeriod = async () => {
+      try {
+        const periodRepo = new AcademicPeriodRepositoryImpl();
+        const getAllPeriodsUseCase = new GetAllAcademicPeriodsUseCase(periodRepo);
+        const periodController = new AcademicPeriodController(
+          getAllPeriodsUseCase,
+          null,
+          null
+        );
+        const periods = await periodController.getAll();
+        const activePeriod = periods.find((p) => p.is_active === 1);
+        if (activePeriod) {
           const now2 = /* @__PURE__ */ new Date();
-          const start = new Date(parsed.startTime);
-          const end = new Date(parsed.endTime);
+          const start = new Date(activePeriod.start_date);
+          const end = new Date(activePeriod.end_date);
+          setActiveSemesterId(activePeriod.semester);
+          setActiveSemesterName(activePeriod.semester_name);
           if (now2 >= start && now2 <= end) {
-            setCurrentRegPeriodType(parsed.type);
+            setCurrentRegPeriodType(
+              activePeriod.period_type
+            );
           } else {
             setCurrentRegPeriodType("none");
           }
-        } catch (error) {
-          console.error("Lỗi khi đọc REGISTRATION_PERIOD từ localStorage", error);
+        } else {
           setCurrentRegPeriodType("none");
+          setActiveSemesterId(null);
+          setActiveSemesterName(null);
         }
-      } else {
+      } catch (error) {
+        console.error("Lỗi khi kiểm tra đợt đăng ký từ server", error);
         setCurrentRegPeriodType("none");
       }
     };
@@ -15720,6 +16645,43 @@ const useStudentDashboardViewModel = (onLogout) => {
     const interval = setInterval(checkRegistrationPeriod, 6e4);
     return () => clearInterval(interval);
   }, []);
+  reactExports.useEffect(() => {
+    reloadStudentData().catch((error) => {
+      console.error("Không thể tải dữ liệu sinh viên", error);
+    });
+  }, [studentId]);
+  reactExports.useEffect(() => {
+    const query = searchQuery.trim();
+    if (currentRegPeriodType === "none") {
+      setSuggestions([]);
+      setSelectedSuggestion(null);
+      setIsSearching(false);
+      setSearchError(null);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      setIsSearching(true);
+      setSearchError(null);
+      const request2 = currentRegPeriodType === "register_program" ? registrationUseCase$1.searchCourseSuggestions(studentId, query) : registrationUseCase$1.searchClassSuggestions(studentId, query);
+      request2.then(setSuggestions).catch((error) => {
+        console.error("Không thể tải gợi ý đăng ký", error);
+        setSearchError(
+          error instanceof Error ? error.message : "Không thể tải gợi ý đăng ký."
+        );
+        setSuggestions([]);
+      }).finally(() => {
+        setIsSearching(false);
+      });
+    }, 250);
+    return () => clearTimeout(timeout);
+  }, [currentRegPeriodType, searchQuery, studentId]);
+  const fallbackSuggestion = reactExports.useMemo(() => {
+    const normalized = searchQuery.trim().toLowerCase();
+    return suggestions.find(
+      (item) => item.code.toLowerCase() === normalized || item.name.toLowerCase() === normalized
+    );
+  }, [searchQuery, suggestions]);
+  const registerTarget = selectedSuggestion ?? fallbackSuggestion;
   const toggleUserInfo = () => {
     setIsUserInfoVisible((currentValue) => !currentValue);
   };
@@ -15728,48 +16690,143 @@ const useStudentDashboardViewModel = (onLogout) => {
     onLogout();
   };
   const handleViewCurriculum = () => {
-    window.open("https://fed.hust.edu.vn", "_blank");
+    onViewCurriculum?.();
   };
-  const handleRegisterSubject = () => {
+  const handleRegisterSubject = async () => {
+    if (currentRegPeriodType === "none") {
+      window.alert("Hiện không trong giai đoạn đăng ký.");
+      return;
+    }
     if (!searchQuery.trim()) {
-      window.alert("Vui lòng nhập mã hoặc tên học phần!");
+      window.alert("Vui lòng nhập mã hoặc tên học phần/lớp học.");
       return;
     }
-    const query = searchQuery.trim().toLowerCase();
-    const subjectFound = allowedSubjects.find(
-      (sub) => sub.code.toLowerCase() === query || sub.name.toLowerCase() === query
+    if (!registerTarget) {
+      window.alert("Vui lòng chọn một gợi ý hợp lệ từ danh sách.");
+      return;
+    }
+    const isAlreadyRegistered = registeredSubjects.some(
+      (sub) => sub.courseId === registerTarget.courseId
     );
-    if (!subjectFound) {
-      window.alert(`Học phần "${searchQuery}" không cho phép đăng ký hoặc không tồn tại trong chương trình của bạn!`);
+    const additionalCredits = isAlreadyRegistered ? 0 : registerTarget.credits;
+    if (totalCredits + additionalCredits > maxCredits) {
+      setAlarmMessage(`Tổng số TC vượt quá giới hạn. Số TC cho phép của bạn là ${maxCredits} TC.`);
       return;
     }
-    const alreadyRegistered = registeredSubjects.some(
-      (sub) => sub.code === subjectFound.code
-    );
-    if (alreadyRegistered) {
-      window.alert(`Học phần ${subjectFound.code} - ${subjectFound.name} đã được đăng ký trước đó!`);
-      return;
+    try {
+      setIsSubmitting(true);
+      if (currentRegPeriodType === "register_program") {
+        const result = await registrationUseCase$1.registerCourse(
+          studentId,
+          registerTarget.courseId
+        );
+        setAlarmMessage(result.message);
+      } else {
+        await registrationUseCase$1.registerClass(
+          studentId,
+          registerTarget.id
+        );
+        setAlarmMessage(`Đã đăng ký lớp học phần ${registerTarget.code}.`);
+      }
+      setSearchQuery("");
+      setIsSuggestionVisible(false);
+      setSuggestions([]);
+      setSelectedSuggestion(null);
+      await reloadStudentData();
+    } catch (error) {
+      setAlarmMessage(error.message || "Đăng ký thất bại.");
+    } finally {
+      setIsSubmitting(false);
     }
-    const newSubject = {
-      id: Date.now().toString(),
-      code: subjectFound.code,
-      name: subjectFound.name,
-      status: "Thành công",
-      credits: subjectFound.credits
-    };
-    setRegisteredSubjects([...registeredSubjects, newSubject]);
-    setSearchQuery("");
-    setIsSuggestionVisible(false);
-    window.alert(`Đăng ký thành công học phần: ${subjectFound.code} - ${subjectFound.name}`);
   };
-  const timeGridEvents = [
-    { day: "T2", period: 1, name: "IT3040" },
-    { day: "T2", period: 2, name: "IT3040" },
-    { day: "T3", period: 3, name: "IT3020" },
-    { day: "T3", period: 4, name: "IT3020" },
-    { day: "T5", period: 7, name: "IT4060" },
-    { day: "T5", period: 8, name: "IT4060" }
-  ];
+  const promptDeleteCourse = (courseId) => {
+    setCourseIdToDelete(courseId);
+  };
+  const cancelDeleteCourse = () => {
+    setCourseIdToDelete(null);
+  };
+  const confirmDeleteCourse = async () => {
+    if (!courseIdToDelete) return;
+    try {
+      setIsSubmitting(true);
+      await registrationUseCase$1.cancelCourseRegistration(studentId, courseIdToDelete);
+      await reloadStudentData();
+      setAlarmMessage("Xoá đăng ký học phần thành công.");
+    } catch (error) {
+      setAlarmMessage(error.message || "Xoá thất bại.");
+    } finally {
+      setIsSubmitting(false);
+      setCourseIdToDelete(null);
+    }
+  };
+  const totalCredits = reactExports.useMemo(() => {
+    return registeredSubjects.filter((subject) => subject.semester === activeSemesterId).reduce((sum, subject) => sum + subject.credits, 0);
+  }, [registeredSubjects, activeSemesterId]);
+  const maxCredits = reactExports.useMemo(() => {
+    switch (status) {
+      case "study_cc1":
+        return 20;
+      case "study_cc2":
+        return 16;
+      case "study_cc3":
+        return 12;
+      case "study":
+      default:
+        return 24;
+    }
+  }, [status]);
+  const statusNote = reactExports.useMemo(() => {
+    switch (status) {
+      case "study_cc1":
+        return "Bạn đang bị cảnh cáo mức 1. Chỉ được đăng ký tối đa 20 TC";
+      case "study_cc2":
+        return "Bạn đang bị cảnh cáo mức 2. Chỉ được đăng ký tối đa 16 TC";
+      case "study_cc3":
+        return "Bạn đang bị cảnh cáo mức 3. Chỉ được đăng ký tối đa 12 TC";
+      case "study":
+      default:
+        return "Bạn được đăng ký tối đa 24 TC";
+    }
+  }, [status]);
+  const toggleCourseExpansion = async (courseId) => {
+    setExpandedCourseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(courseId)) {
+        next.delete(courseId);
+      } else {
+        next.add(courseId);
+      }
+      return next;
+    });
+    if (!courseClassesData[courseId] && !isLoadingClasses[courseId]) {
+      setIsLoadingClasses((prev) => ({ ...prev, [courseId]: true }));
+      try {
+        const classes = await registrationUseCase$1.getClassesForCourse(studentId, courseId);
+        setCourseClassesData((prev) => ({ ...prev, [courseId]: classes }));
+      } catch (error) {
+        console.error("Lỗi khi tải danh sách lớp", error);
+        setAlarmMessage("Không thể tải danh sách lớp học phần này.");
+      } finally {
+        setIsLoadingClasses((prev) => ({ ...prev, [courseId]: false }));
+      }
+    }
+  };
+  const handleRegisterClassSection = async (classId, classCode) => {
+    if (currentRegPeriodType !== "register_class") {
+      window.alert("Hiện không trong giai đoạn đăng ký lớp học.");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      await registrationUseCase$1.registerClass(studentId, classId);
+      setAlarmMessage(`Đã đăng ký lớp học phần ${classCode} thành công.`);
+      await reloadStudentData();
+    } catch (error) {
+      setAlarmMessage(error.message || "Đăng ký thất bại.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   return {
     isUserInfoVisible,
     toggleUserInfo,
@@ -15777,22 +16834,67 @@ const useStudentDashboardViewModel = (onLogout) => {
     handleSearchQueryChange,
     isSuggestionVisible,
     setIsSuggestionVisible,
-    suggestedSubjects,
+    suggestedSubjects: suggestions,
+    isSearching,
+    searchError,
     handleSelectSuggestion,
     handleRegisterSubject,
     handleViewCurriculum,
     handleLogout,
     registeredSubjects,
     timeGridEvents,
-    currentRegPeriodType
+    currentRegPeriodType,
+    isSubmitting,
+    alarmMessage,
+    setAlarmMessage,
+    courseIdToDelete,
+    promptDeleteCourse,
+    cancelDeleteCourse,
+    confirmDeleteCourse,
+    activeSemesterId,
+    activeSemesterName,
+    totalCredits,
+    maxCredits,
+    statusNote,
+    expandedCourseIds,
+    courseClassesData,
+    isLoadingClasses,
+    toggleCourseExpansion,
+    handleRegisterClassSection
   };
+};
+const AlarmOneChoose = ({ message, buttonText, onClose }) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "alarm-overlay", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "alarm-box", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "alarm-message", children: message }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "alarm-button", onClick: onClose, children: buttonText })
+  ] }) });
+};
+const AlarmTwoChoose = ({
+  message,
+  button1Text,
+  button2Text,
+  onButton1Click,
+  onButton2Click
+}) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "alarm-overlay", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "alarm-box", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "alarm-message", children: message }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "alarm-buttons", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "alarm-button-secondary", onClick: onButton1Click, children: button1Text }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "alarm-button-primary", onClick: onButton2Click, children: button2Text })
+    ] })
+  ] }) });
 };
 const daysOfWeek = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const morningPeriods = [1, 2, 3, 4, 5, 6];
 const afternoonPeriods = [7, 8, 9, 10, 11, 12];
 const StudentDashboard = () => {
   const navigate = useNavigate();
-  const onLogout = () => navigate("/login");
+  const account = getCurrentAccount();
+  const onLogout = () => {
+    clearCurrentAccount();
+    navigate("/login");
+  };
+  const onViewCurriculum = () => navigate("/student/curriculum");
   const {
     isUserInfoVisible,
     toggleUserInfo,
@@ -15801,16 +16903,63 @@ const StudentDashboard = () => {
     isSuggestionVisible,
     setIsSuggestionVisible,
     suggestedSubjects,
+    isSearching,
+    searchError,
     handleSelectSuggestion,
     handleRegisterSubject,
     handleViewCurriculum,
     handleLogout,
     registeredSubjects,
     timeGridEvents,
-    currentRegPeriodType
-  } = useStudentDashboardViewModel(onLogout);
+    currentRegPeriodType,
+    isSubmitting,
+    alarmMessage,
+    setAlarmMessage,
+    courseIdToDelete,
+    promptDeleteCourse,
+    cancelDeleteCourse,
+    confirmDeleteCourse,
+    activeSemesterId,
+    activeSemesterName,
+    totalCredits,
+    statusNote,
+    expandedCourseIds,
+    courseClassesData,
+    isLoadingClasses,
+    toggleCourseExpansion,
+    handleRegisterClassSection
+  } = useStudentDashboardViewModel(onLogout, account ?? null, onViewCurriculum);
   const { isDark, toggleTheme } = useTheme();
+  const studentLabel = `${account?.name ?? "Sinh viên"} - ${account?.id_card ?? account?.username ?? account?.id ?? ""}`;
+  const isRegistrationOpen = currentRegPeriodType !== "none";
+  const phaseTitle = currentRegPeriodType === "register_program" ? "Đợt đăng ký học phần" : currentRegPeriodType === "register_class" ? "Đợt đăng ký lớp học" : "Không có lịch đăng ký";
+  const phaseBadge = isRegistrationOpen ? "Đang mở" : "Đã đóng";
+  const searchLabel = currentRegPeriodType === "register_program" ? "Tìm học phần" : "Tìm lớp học phần";
+  const getRegisteredStatusClass = (rawStatus) => {
+    if (rawStatus === "registered" || rawStatus === "re_registered") return "registered";
+    if (rawStatus === "completed") return "completed";
+    return "available";
+  };
+  const displayedSubjects = activeSemesterId ? registeredSubjects.filter((item) => item.semester === activeSemesterId) : [];
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "student-container", children: [
+    alarmMessage && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      AlarmOneChoose,
+      {
+        message: alarmMessage,
+        buttonText: "Đóng",
+        onClose: () => setAlarmMessage(null)
+      }
+    ),
+    courseIdToDelete && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      AlarmTwoChoose,
+      {
+        message: "Xác nhận xoá đăng ký học phần này",
+        button1Text: "Huỷ",
+        button2Text: "Xác nhận",
+        onButton1Click: cancelDeleteCourse,
+        onButton2Click: confirmDeleteCourse
+      }
+    ),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "nav-bar", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "nav-left", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: hustLogo, alt: "Logo", className: "nav-logo" }),
@@ -15822,82 +16971,193 @@ const StudentDashboard = () => {
       ] })
     ] }),
     isUserInfoVisible && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "user-profile-popover card", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "user-name", children: "Phan Chí Công - 20231566" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "user-name", children: studentLabel }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "logout-btn", onClick: handleLogout, children: "Đăng xuất" })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "student-content", children: currentRegPeriodType === "none" ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "welcome-banner", style: { display: "flex", justifyContent: "center", alignItems: "center", height: "200px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "what-time-is-it", children: "Đang không có lịch đăng ký" }) }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "welcome-banner", children: /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "what-time-is-it", children: currentRegPeriodType === "module" ? "Đây đang là giai đoạn đăng ký học phần" : "Đây đang là giai đoạn đăng ký lớp học" }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "student-actions card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "action-btn secondary-btn", onClick: handleViewCurriculum, children: "Xem Chương Trình Đào Tạo" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "registration-box", style: { position: "relative", display: "flex", gap: "10px", alignItems: "flex-start" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", flex: 1 }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "student-content", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "student-page-head", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "page-kicker", children: "Hệ thống đăng ký học tập" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("h1", { children: [
+            phaseTitle,
+            activeSemesterName && ` - Học kỳ ${activeSemesterName}`
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `phase-badge ${isRegistrationOpen ? "open" : "closed"}`, children: phaseBadge })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "registration-panel card", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-header", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: searchLabel }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: studentLabel })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "outline-btn", onClick: handleViewCurriculum, children: "Xem CTĐT" })
+        ] }),
+        isRegistrationOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "registration-box", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "suggestion-anchor", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "input",
               {
                 className: "search-input",
-                placeholder: "Nhập mã/tên học phần",
+                placeholder: currentRegPeriodType === "register_program" ? "Nhập mã hoặc tên học phần" : "Nhập mã hoặc tên lớp học phần",
                 value: searchQuery,
                 onChange: (e) => handleSearchQueryChange(e.target.value),
                 onFocus: () => setIsSuggestionVisible(true),
-                onBlur: () => setTimeout(() => setIsSuggestionVisible(false), 200),
-                style: { width: "100%", boxSizing: "border-box" }
+                onBlur: () => setTimeout(() => setIsSuggestionVisible(false), 200)
               }
             ),
-            isSuggestionVisible && suggestedSubjects.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "suggestions-dropdown", style: {
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              backgroundColor: isDark ? "#2d2d2d" : "white",
-              color: isDark ? "#fff" : "#000",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-              zIndex: 10,
-              maxHeight: "200px",
-              overflowY: "auto",
-              marginTop: "4px",
-              textAlign: "left"
-            }, children: suggestedSubjects.map((sub, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            isSuggestionVisible && searchQuery.trim() && /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "div",
               {
-                className: "suggestion-item",
-                style: { padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee" },
-                onClick: () => handleSelectSuggestion(sub.code),
-                onMouseEnter: (e) => e.currentTarget.style.backgroundColor = isDark ? "#3d3d3d" : "#f0f0f0",
-                onMouseLeave: (e) => e.currentTarget.style.backgroundColor = "transparent",
+                className: "suggestions-dropdown",
+                onMouseDown: (e) => e.preventDefault(),
                 children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: sub.code }),
-                  " - ",
-                  sub.name
+                  isSearching && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "suggestion-state", children: "Đang tìm..." }),
+                  !isSearching && searchError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "suggestion-state error", children: searchError }),
+                  !isSearching && !searchError && suggestedSubjects.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "suggestion-state", children: "Không có gợi ý phù hợp" }),
+                  !isSearching && !searchError && suggestedSubjects.map((sub, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "button",
+                    {
+                      className: "suggestion-item",
+                      type: "button",
+                      onClick: () => handleSelectSuggestion(sub),
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "suggestion-code", children: sub.code }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "suggestion-name", children: sub.name }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "suggestion-credits", children: [
+                          sub.credits,
+                          " TC"
+                        ] }),
+                        "statusLabel" in sub && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `suggestion-status status-${sub.status}`, children: sub.statusLabel }),
+                        "occupiedSlots" in sub && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "suggestion-status status-available", children: [
+                          "Còn ",
+                          sub.totalSlots - sub.occupiedSlots,
+                          "/",
+                          sub.totalSlots,
+                          " chỗ"
+                        ] })
+                      ]
+                    },
+                    `${sub.code}-${idx}`
+                  ))
                 ]
-              },
-              idx
-            )) })
+              }
+            )
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: handleRegisterSubject, style: { height: "40px" }, children: "Đăng ký" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              className: "primary-btn",
+              onClick: handleRegisterSubject,
+              disabled: isSubmitting,
+              children: isSubmitting ? "Đang đăng ký..." : "Đăng ký"
+            }
+          )
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "registration-table card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "section-title", children: "Bảng Thông tin đăng ký" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-scroll", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "ID" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã HP" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Tên học phần" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "TT Đăng ký" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Số TC" })
-          ] }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: registeredSubjects.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.id }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.code }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.name }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "status-cell", children: item.status }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.credits })
-          ] }, item.id)) })
-        ] }) })
+      !isRegistrationOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "no-phase-panel card", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Đang không có lịch đăng ký" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Vui lòng quay lại sau hoặc liên hệ Phòng đào tạo để biết thêm chi tiết." })
       ] }),
-      currentRegPeriodType === "class" && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "timetable-section card", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "registration-table card", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "section-title", children: "Bảng thông tin đăng ký" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "table-scroll", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: { width: "40px" } }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "ID" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã HP" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Tên học phần" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "TT đăng ký" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Số TC" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Hành động" })
+            ] }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+              displayedSubjects.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs(React$2.Fragment, { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: expandedCourseIds.has(item.courseId) ? "expanded-row" : "", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      className: "icon-btn",
+                      onClick: () => toggleCourseExpansion(item.courseId),
+                      style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" },
+                      children: expandedCourseIds.has(item.courseId) ? "▼" : "▶"
+                    }
+                  ) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.id }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "course-code", children: item.code }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.name }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `table-status status-${getRegisteredStatusClass(item.rawStatus)}`, children: item.status }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.credits }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      className: "outline-btn",
+                      onClick: () => promptDeleteCourse(item.courseId),
+                      disabled: isSubmitting,
+                      children: "Xoá"
+                    }
+                  ) })
+                ] }),
+                expandedCourseIds.has(item.courseId) && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { className: "sub-table-row", children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 7, style: { padding: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sub-table-container", style: { padding: "16px", background: "var(--bg-color)", borderBottom: "1px solid var(--border-color)" }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { style: { margin: "0 0 12px 0" }, children: "Danh sách lớp học phần" }),
+                  isLoadingClasses[item.courseId] ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Đang tải..." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table sub-table", style: { margin: 0 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "ID Lớp" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Chi tiết lịch học" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Số chỗ" }),
+                      currentRegPeriodType === "register_class" && /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Hành động" })
+                    ] }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: courseClassesData[item.courseId]?.length > 0 ? courseClassesData[item.courseId].map((cls) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.id }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: (() => {
+                        try {
+                          const parsed = JSON.parse(cls.detail || "[]");
+                          const slots = Array.isArray(parsed) ? parsed : parsed.slots;
+                          return slots?.map((s, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                            s.day.replace("T", "Thứ "),
+                            " - Tiết ",
+                            Array.isArray(s.periods) ? s.periods.join(", ") : s.period
+                          ] }, idx));
+                        } catch {
+                          return cls.detail;
+                        }
+                      })() }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `table-status status-${cls.occupiedSlots >= cls.totalSlots ? "blocked" : "available"}`, children: [
+                        cls.occupiedSlots,
+                        "/",
+                        cls.totalSlots
+                      ] }) }),
+                      currentRegPeriodType === "register_class" && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "button",
+                        {
+                          className: "primary-btn",
+                          onClick: () => handleRegisterClassSection(cls.id, item.code),
+                          disabled: isSubmitting || cls.occupiedSlots >= cls.totalSlots,
+                          style: { padding: "4px 12px", fontSize: "0.85rem" },
+                          children: "Đăng ký"
+                        }
+                      ) })
+                    ] }, cls.id)) : /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: currentRegPeriodType === "register_class" ? 4 : 3, className: "empty-table-cell", children: "Không có lớp học phần nào đang mở cho học phần này" }) }) })
+                  ] })
+                ] }) }) })
+              ] }, item.id)),
+              displayedSubjects.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 7, className: "empty-table-cell", children: "Chưa có học phần đăng ký" }) })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-footer", style: { marginTop: "16px", padding: "12px", background: "var(--surface-color)", borderRadius: "8px", border: "1px solid var(--border-color)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "credits-info", style: { display: "flex", flexDirection: "column", gap: "8px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "total-credits", style: { fontWeight: "bold", fontSize: "1.1rem" }, children: [
+              "Tổng số TC: ",
+              totalCredits
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "credits-note", style: { color: "var(--text-secondary)", fontSize: "0.9rem", fontStyle: "italic" }, children: [
+              "* Ghi chú: ",
+              statusNote
+            ] })
+          ] }) })
+        ] })
+      ] }),
+      currentRegPeriodType === "register_class" && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "timetable-section card", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "section-title", children: "Thời khóa biểu tạm thời" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-scroll", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "time-grid", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-header", children: [
@@ -15927,15 +17187,178 @@ const StudentDashboard = () => {
           ] }, `a-${period}`))
         ] }) })
       ] })
-    ] }) })
+    ] })
+  ] });
+};
+const registrationUseCase = new ManageStudentRegistration(
+  new StudentRegistrationRepositoryImpl()
+);
+const useCurriculumViewModel = (studentId) => {
+  const [curriculum, setCurriculum] = reactExports.useState(null);
+  const [isLoading, setIsLoading] = reactExports.useState(false);
+  const [error, setError] = reactExports.useState(null);
+  const [registeringCourseId, setRegisteringCourseId] = reactExports.useState(null);
+  const [alarmMessage, setAlarmMessage] = reactExports.useState(null);
+  const loadCurriculum = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setCurriculum(await registrationUseCase.getCurriculum(studentId));
+    } catch (err) {
+      setError(err.message || "Không thể tải chương trình đào tạo.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  reactExports.useEffect(() => {
+    loadCurriculum();
+  }, [studentId]);
+  const handleRegisterCourse = async (course) => {
+    try {
+      setRegisteringCourseId(course.courseId);
+      await registrationUseCase.registerCourse(studentId, course.courseId);
+      setAlarmMessage(`Đã đăng ký học phần ${course.code}.`);
+      await loadCurriculum();
+    } catch (err) {
+      setAlarmMessage(err.message || "Đăng ký học phần thất bại.");
+    } finally {
+      setRegisteringCourseId(null);
+    }
+  };
+  return {
+    curriculum,
+    isLoading,
+    error,
+    registeringCourseId,
+    alarmMessage,
+    setAlarmMessage,
+    reload: loadCurriculum,
+    handleRegisterCourse
+  };
+};
+const Curriculum = () => {
+  const navigate = useNavigate();
+  const account = getCurrentAccount();
+  const {
+    curriculum,
+    isLoading,
+    error,
+    registeringCourseId,
+    alarmMessage,
+    setAlarmMessage,
+    handleRegisterCourse
+  } = useCurriculumViewModel(account?.id ?? 1);
+  const [searchQuery, setSearchQuery] = reactExports.useState("");
+  const totalCourses = curriculum?.courses.length ?? 0;
+  const completedCourses = curriculum?.courses.filter((course) => course.status === "completed").length ?? 0;
+  const registeredCourses = curriculum?.courses.filter((course) => course.status === "registered").length ?? 0;
+  const filteredCourses = curriculum?.courses.filter(
+    (course) => course.code.toLowerCase().includes(searchQuery.toLowerCase()) || course.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
+  const renderAction = (course) => {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        className: "primary-btn small-btn",
+        onClick: () => handleRegisterCourse(course),
+        disabled: registeringCourseId === course.courseId,
+        children: registeringCourseId === course.courseId ? "..." : "Đăng ký"
+      }
+    );
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "student-container", children: [
+    alarmMessage && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      AlarmOneChoose,
+      {
+        message: alarmMessage,
+        buttonText: "Đóng",
+        onClose: () => setAlarmMessage(null)
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "curriculum-header", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "secondary-btn back-nav-btn", onClick: () => navigate("/student"), children: "Quay lại" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "curriculum-title-block", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "page-kicker", children: "Chương trình đào tạo" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: curriculum?.program ? `${curriculum.program.code} - ${curriculum.program.name}` : "Danh sách học phần" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "student-content", children: [
+      isLoading && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "card state-panel", children: "Đang tải dữ liệu..." }),
+      error && !isLoading && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "card state-panel", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Không thể tải dữ liệu" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: error })
+      ] }),
+      !isLoading && !error && curriculum && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "registration-table card curriculum-card", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "curriculum-summary", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Tổng học phần" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: totalCourses })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { backgroundColor: "#708238", color: "#fff", padding: "10px", borderRadius: "8px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Đã học xong" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: completedCourses })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { backgroundColor: "#C49102", color: "#fff", padding: "10px", borderRadius: "8px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Đã đăng ký, chưa học xong" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: registeredCourses })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", style: { marginTop: "1rem", marginBottom: "1rem" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            className: "search-input",
+            placeholder: "Tìm theo Mã HP hoặc Tên học phần",
+            value: searchQuery,
+            onChange: (e) => setSearchQuery(e.target.value),
+            style: { width: "100%", maxWidth: "400px" }
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "section-title", children: [
+          curriculum.student.name,
+          " - ",
+          curriculum.student.id_card ?? curriculum.student.username
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-scroll", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table curriculum-table", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã HP" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Tên học phần" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "TC" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Tiên quyết" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Song hành" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Thao tác" })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: filteredCourses.map((course) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "tr",
+            {
+              style: {
+                backgroundColor: course.status === "completed" ? "#708238" : course.status === "registered" ? "#C49102" : void 0,
+                color: course.status === "completed" || course.status === "registered" ? "#fff" : void 0
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "course-code", style: { color: course.status === "completed" || course.status === "registered" ? "#fff" : void 0 }, children: course.code }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: course.name }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: course.credits }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: course.prerequisiteCode ?? "-" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: course.parallelCode ?? "-" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: renderAction(course) })
+              ]
+            },
+            course.curriculumId
+          )) })
+        ] }) })
+      ] })
+    ] })
   ] });
 };
 function App() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx(HashRouter, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Routes, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "/login", element: /* @__PURE__ */ jsxRuntimeExports.jsx(LoginScreen, {}) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "/admin", element: /* @__PURE__ */ jsxRuntimeExports.jsx(AdminDashboard, {}) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "/admin/edit", element: /* @__PURE__ */ jsxRuntimeExports.jsx(AdminEditClass, {}) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "/admin/edit", element: /* @__PURE__ */ jsxRuntimeExports.jsx(AdminCreateClass, {}) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "/admin/create-class", element: /* @__PURE__ */ jsxRuntimeExports.jsx(AdminCreateClass, {}) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "/admin/program-registration-details", element: /* @__PURE__ */ jsxRuntimeExports.jsx(AdminCourseRegistrationDetails, {}) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "/student", element: /* @__PURE__ */ jsxRuntimeExports.jsx(StudentDashboard, {}) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "/student/curriculum", element: /* @__PURE__ */ jsxRuntimeExports.jsx(Curriculum, {}) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "*", element: /* @__PURE__ */ jsxRuntimeExports.jsx(Navigate, { to: "/login", replace: true }) })
   ] }) });
 }
