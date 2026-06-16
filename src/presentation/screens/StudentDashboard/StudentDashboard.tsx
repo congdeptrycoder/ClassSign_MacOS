@@ -129,7 +129,7 @@ export const StudentDashboard = () => {
                     <div>
                         <p className="page-kicker">Hệ thống đăng ký học tập</p>
                         <h1>
-                            {phaseTitle} 
+                            {phaseTitle}
                             {activeSemesterName && ` - Học kỳ ${activeSemesterName}`}
                         </h1>
                     </div>
@@ -138,81 +138,79 @@ export const StudentDashboard = () => {
                     </span>
                 </section>
 
-                <section className="registration-panel card">
-                    <div className="panel-header">
-                        <div>
-                            <h2>{searchLabel}</h2>
-                            <p>{studentLabel}</p>
-                        </div>
-                        <button className="outline-btn" onClick={handleViewCurriculum}>
-                            Xem CTĐT
-                        </button>
-                    </div>
-
-                    {isRegistrationOpen && (
-                        <div className="registration-box">
-                            <div className="suggestion-anchor">
-                                <input
-                                    className="search-input"
-                                    placeholder={
-                                        currentRegPeriodType === 'register_program'
-                                            ? 'Nhập mã hoặc tên học phần'
-                                            : 'Nhập mã hoặc tên lớp học phần'
-                                    }
-                                    value={searchQuery}
-                                    onChange={(e) => handleSearchQueryChange(e.target.value)}
-                                    onFocus={() => setIsSuggestionVisible(true)}
-                                    onBlur={() => setTimeout(() => setIsSuggestionVisible(false), 200)}
-                                />
-                                {isSuggestionVisible && searchQuery.trim() && (
-                                    <div 
-                                        className="suggestions-dropdown"
-                                        onMouseDown={(e) => e.preventDefault()}
-                                    >
-                                        {isSearching && (
-                                            <div className="suggestion-state">Đang tìm...</div>
-                                        )}
-                                        {!isSearching && searchError && (
-                                            <div className="suggestion-state error">{searchError}</div>
-                                        )}
-                                        {!isSearching && !searchError && suggestedSubjects.length === 0 && (
-                                            <div className="suggestion-state">Không có gợi ý phù hợp</div>
-                                        )}
-                                        {!isSearching && !searchError && suggestedSubjects.map((sub, idx) => (
-                                            <button
-                                                key={`${sub.code}-${idx}`}
-                                                className="suggestion-item"
-                                                type="button"
-                                                onClick={() => handleSelectSuggestion(sub)}
-                                            >
-                                                <span className="suggestion-code">{sub.code}</span>
-                                                <span className="suggestion-name">{sub.name}</span>
-                                                <span className="suggestion-credits">{sub.credits} TC</span>
-                                                {'statusLabel' in sub && (
-                                                    <span className={`suggestion-status status-${sub.status}`}>
-                                                        {sub.statusLabel}
-                                                    </span>
-                                                )}
-                                                {'occupiedSlots' in sub && (
-                                                    <span className="suggestion-status status-available">
-                                                        Còn {sub.totalSlots - sub.occupiedSlots}/{sub.totalSlots} chỗ
-                                                    </span>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
+                {currentRegPeriodType === 'register_program' && (
+                    <section className="registration-panel card">
+                        <div className="panel-header">
+                            <div>
+                                <h2>{searchLabel}</h2>
+                                <p>{studentLabel}</p>
                             </div>
-                            <button
-                                className="primary-btn"
-                                onClick={handleRegisterSubject}
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? 'Đang đăng ký...' : 'Đăng ký'}
+                            <button className="outline-btn" onClick={handleViewCurriculum}>
+                                Xem CTĐT
                             </button>
                         </div>
-                    )}
-                </section>
+
+                        {isRegistrationOpen && (
+                            <div className="registration-box">
+                                <div className="suggestion-anchor">
+                                    <input
+                                        className="search-input"
+                                        placeholder="Nhập mã hoặc tên học phần"
+                                        value={searchQuery}
+                                        onChange={(e) => handleSearchQueryChange(e.target.value)}
+                                        onFocus={() => setIsSuggestionVisible(true)}
+                                        onBlur={() => setTimeout(() => setIsSuggestionVisible(false), 200)}
+                                    />
+                                    {isSuggestionVisible && searchQuery.trim() && (
+                                        <div
+                                            className="suggestions-dropdown"
+                                            onMouseDown={(e) => e.preventDefault()}
+                                        >
+                                            {isSearching && (
+                                                <div className="suggestion-state">Đang tìm...</div>
+                                            )}
+                                            {!isSearching && searchError && (
+                                                <div className="suggestion-state error">{searchError}</div>
+                                            )}
+                                            {!isSearching && !searchError && suggestedSubjects.length === 0 && (
+                                                <div className="suggestion-state">Không có gợi ý phù hợp</div>
+                                            )}
+                                            {!isSearching && !searchError && suggestedSubjects.map((sub, idx) => (
+                                                <button
+                                                    key={`${sub.code}-${idx}`}
+                                                    className="suggestion-item"
+                                                    type="button"
+                                                    onClick={() => handleSelectSuggestion(sub)}
+                                                >
+                                                    <span className="suggestion-code">{sub.code}</span>
+                                                    <span className="suggestion-name">{sub.name}</span>
+                                                    <span className="suggestion-credits">{sub.credits} TC</span>
+                                                    {'statusLabel' in sub && (
+                                                        <span className={`suggestion-status status-${sub.status}`}>
+                                                            {sub.statusLabel}
+                                                        </span>
+                                                    )}
+                                                    {'occupiedSlots' in sub && (
+                                                        <span className="suggestion-status status-available">
+                                                            Còn {sub.totalSlots - sub.occupiedSlots}/{sub.totalSlots} chỗ
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <button
+                                    className="primary-btn"
+                                    onClick={handleRegisterSubject}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? 'Đang đăng ký...' : 'Đăng ký'}
+                                </button>
+                            </div>
+                        )}
+                    </section>
+                )}
 
                 {!isRegistrationOpen && (
                     <div className="no-phase-panel card">
@@ -227,7 +225,7 @@ export const StudentDashboard = () => {
                         <table className="info-table">
                             <thead>
                                 <tr>
-                                    <th style={{ width: '40px' }}></th>
+                                    <th style={{ width: '40px' }}>DS Lớp</th>
                                     <th>ID</th>
                                     <th>Mã HP</th>
                                     <th>Tên học phần</th>
@@ -241,8 +239,8 @@ export const StudentDashboard = () => {
                                     <React.Fragment key={item.id}>
                                         <tr className={expandedCourseIds.has(item.courseId) ? 'expanded-row' : ''}>
                                             <td>
-                                                <button 
-                                                    className="expand-btn" 
+                                                <button
+                                                    className="expand-btn"
                                                     onClick={() => toggleCourseExpansion(item.courseId)}
                                                 >
                                                     {expandedCourseIds.has(item.courseId) ? '▼' : '▶'}
@@ -258,8 +256,8 @@ export const StudentDashboard = () => {
                                             </td>
                                             <td>{item.credits}</td>
                                             <td>
-                                                <button 
-                                                    className="outline-btn" 
+                                                <button
+                                                    className="outline-btn"
                                                     onClick={() => promptDeleteCourse(item.courseId)}
                                                     disabled={isSubmitting}
                                                 >
@@ -290,55 +288,55 @@ export const StudentDashboard = () => {
                                                                             let parsed: any = {};
                                                                             try {
                                                                                 parsed = JSON.parse(cls.detail || '{}');
-                                                                            } catch {}
-                                                                            
+                                                                            } catch { }
+
                                                                             return (
-                                                                            <tr key={cls.id}>
-                                                                                <td>{parsed.ma_lop || cls.id}</td>
-                                                                                <td>
-                                                                                    {(() => {
-                                                                                        if (Array.isArray(parsed)) {
-                                                                                            return parsed.map((s: any, idx: number) => (
-                                                                                                <div key={idx}>
-                                                                                                    {s.day?.replace('T', 'Thứ ')} - Tiết {Array.isArray(s.periods) ? s.periods.join(', ') : s.period}
-                                                                                                </div>
-                                                                                            ));
-                                                                                        } else if (parsed.slots && Array.isArray(parsed.slots)) {
-                                                                                            return parsed.slots.map((s: any, idx: number) => (
-                                                                                                <div key={idx}>
-                                                                                                    {s.day?.replace('T', 'Thứ ')} - Tiết {Array.isArray(s.periods) ? s.periods.join(', ') : s.period}
-                                                                                                </div>
-                                                                                            ));
-                                                                                        } else if (parsed.thu && parsed.tiet_bd && parsed.tiet_kt) {
-                                                                                            return (
-                                                                                                <div>
-                                                                                                    Thứ {parsed.thu} - Tiết {parsed.tiet_bd}-{parsed.tiet_kt} {parsed.phong_hoc ? `(${parsed.phong_hoc})` : ''}
-                                                                                                </div>
-                                                                                            );
-                                                                                        }
-                                                                                        return cls.detail;
-                                                                                    })()}
-                                                                                </td>
-                                                                                <td>
-                                                                                    <span className={`table-status status-${cls.occupiedSlots >= cls.totalSlots ? 'blocked' : 'available'}`}>
-                                                                                        {cls.occupiedSlots}/{cls.totalSlots}
-                                                                                    </span>
-                                                                                </td>
-                                                                                {currentRegPeriodType === 'register_class' && (
+                                                                                <tr key={cls.id}>
+                                                                                    <td>{parsed.ma_lop || cls.id}</td>
                                                                                     <td>
-                                                                                        <button 
-                                                                                            className="primary-btn" 
-                                                                                            onClick={() => handleRegisterClassSection(cls.id, item.code)}
-                                                                                            disabled={isSubmitting || cls.occupiedSlots >= cls.totalSlots}
-                                                                                            style={{ padding: '4px 12px', fontSize: '0.85rem' }}
-                                                                                        >
-                                                                                            Đăng ký
-                                                                                        </button>
+                                                                                        {(() => {
+                                                                                            if (Array.isArray(parsed)) {
+                                                                                                return parsed.map((s: any, idx: number) => (
+                                                                                                    <div key={idx}>
+                                                                                                        {s.day?.replace('T', 'Thứ ')} - Tiết {Array.isArray(s.periods) ? s.periods.join(', ') : s.period}
+                                                                                                    </div>
+                                                                                                ));
+                                                                                            } else if (parsed.slots && Array.isArray(parsed.slots)) {
+                                                                                                return parsed.slots.map((s: any, idx: number) => (
+                                                                                                    <div key={idx}>
+                                                                                                        {s.day?.replace('T', 'Thứ ')} - Tiết {Array.isArray(s.periods) ? s.periods.join(', ') : s.period}
+                                                                                                    </div>
+                                                                                                ));
+                                                                                            } else if (parsed.thu && parsed.tiet_bd && parsed.tiet_kt) {
+                                                                                                return (
+                                                                                                    <div>
+                                                                                                        Thứ {parsed.thu} - Tiết {parsed.tiet_bd}-{parsed.tiet_kt} {parsed.phong_hoc ? `(${parsed.phong_hoc})` : ''}
+                                                                                                    </div>
+                                                                                                );
+                                                                                            }
+                                                                                            return cls.detail;
+                                                                                        })()}
                                                                                     </td>
-                                                                                )}
-                                                                            </tr>
-                                                                        );
-                                                                    })
+                                                                                    <td>
+                                                                                        <span className={`table-status status-${cls.occupiedSlots >= cls.totalSlots ? 'blocked' : 'available'}`}>
+                                                                                            {cls.occupiedSlots}/{cls.totalSlots}
+                                                                                        </span>
+                                                                                    </td>
+                                                                                    {currentRegPeriodType === 'register_class' && (
+                                                                                        <td>
+                                                                                            <button
+                                                                                                className="primary-btn"
+                                                                                                onClick={() => handleRegisterClassSection(cls.id, item.code)}
+                                                                                                disabled={isSubmitting || cls.occupiedSlots >= cls.totalSlots}
+                                                                                                style={{ padding: '4px 12px', fontSize: '0.85rem' }}
+                                                                                            >
+                                                                                                Đăng ký
+                                                                                            </button>
+                                                                                        </td>
+                                                                                    )}
+                                                                                </tr>
+                                                                            );
+                                                                        })
                                                                     ) : (
                                                                         <tr>
                                                                             <td colSpan={currentRegPeriodType === 'register_class' ? 4 : 3} className="empty-table-cell">
