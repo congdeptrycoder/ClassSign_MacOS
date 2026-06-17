@@ -48,6 +48,29 @@ function parseTimetableEvents(entries: TimetableEntry[]): TimeEvent[] {
 
         try {
             const detail = JSON.parse(entry.detail);
+
+            if (detail.thu && detail.tiet_bd && detail.tiet_kt) {
+                const dayStr = `T${detail.thu}`;
+                let start = parseInt(detail.tiet_bd, 10);
+                let end = parseInt(detail.tiet_kt, 10);
+                if (isNaN(start) || isNaN(end)) return [];
+
+                if (detail.buoi === 'Chiều') {
+                    start += 6;
+                    end += 6;
+                }
+
+                const events: TimeEvent[] = [];
+                for (let i = start; i <= end; i++) {
+                    events.push({
+                        day: dayStr,
+                        period: i,
+                        name: entry.code,
+                    });
+                }
+                return events;
+            }
+
             const slots = Array.isArray(detail) ? detail : detail.slots;
             if (!Array.isArray(slots)) return [];
 
@@ -84,6 +107,7 @@ export const useStudentDashboardViewModel = (
     const [isSearching, setIsSearching] = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
     const [registeredSubjects, setRegisteredSubjects] = useState<RegisteredSubject[]>([]);
+    const [registeredClasses, setRegisteredClasses] = useState<TimetableEntry[]>([]);
     const [timeGridEvents, setTimeGridEvents] = useState<TimeEvent[]>([]);
     const [currentRegPeriodType, setCurrentRegPeriodType] = useState<
         'register_program' | 'register_class' | 'none'
@@ -116,6 +140,7 @@ export const useStudentDashboardViewModel = (
                 status: toStatusLabel(course.status),
             }))
         );
+        setRegisteredClasses(timetable);
         setTimeGridEvents(parseTimetableEvents(timetable));
     };
 
@@ -390,6 +415,28 @@ export const useStudentDashboardViewModel = (
         }
     };
 
+    const handleCancelClassSection = async (classId: number, classCode: string) => {
+        if (currentRegPeriodType !== 'register_class') {
+            window.alert('Hiện không trong giai đoạn đăng ký lớp học.');
+            return;
+        }
+
+        if (!window.confirm(`Bạn có chắc chắn muốn huỷ đăng ký lớp ${classCode}?`)) {
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            await registrationUseCase.cancelClassRegistration(studentId, classId);
+            setAlarmMessage(`Đã huỷ lớp học phần ${classCode} thành công.`);
+            await reloadStudentData();
+        } catch (error: any) {
+            setAlarmMessage(error.message || 'Huỷ thất bại.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     return {
         isUserInfoVisible,
         toggleUserInfo,
@@ -405,6 +452,7 @@ export const useStudentDashboardViewModel = (
         handleViewCurriculum,
         handleLogout,
         registeredSubjects,
+        registeredClasses,
         timeGridEvents,
         currentRegPeriodType,
         isSubmitting,
@@ -424,5 +472,6 @@ export const useStudentDashboardViewModel = (
         isLoadingClasses,
         toggleCourseExpansion,
         handleRegisterClassSection,
+        handleCancelClassSection,
     };
 };

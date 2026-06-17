@@ -56,6 +56,11 @@ export class StudentRegistrationRepositoryImpl
     });
   }
 
+  cancelClassRegistration(studentId: number, classId: number): Promise<void> {
+    return apiClient.delete<void>(`/students/${studentId}/class-registrations/${classId}`);
+  }
+
+
   getClassesForCourse(studentId: number, courseId: number): Promise<ClassSuggestion[]> {
     return apiClient.get<ClassSuggestion[]>(
       `/students/${studentId}/courses/${courseId}/classes`

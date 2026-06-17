@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useState, useEffect } from 'react';
-import { ThemeColors, ThemeContextValue, ThemeMode } from '../../../../shared/types/theme.types';
+import { ThemeColors, ThemeContextValue, ThemeMode } from '../../shared/types/theme.types';
 
 export const lightColors: ThemeColors = {
     background: '#FFFFFF',

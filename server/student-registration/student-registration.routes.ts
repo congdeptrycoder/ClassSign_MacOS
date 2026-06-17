@@ -9,6 +9,7 @@ import {
   getStudentTimetable,
   deleteCourseRegistration,
   getCourseClasses,
+  deleteClassRegistration,
 } from './student-registration.controller';
 
 const router = Router();
@@ -21,6 +22,7 @@ router.delete('/:studentId/course-registrations/:courseId', deleteCourseRegistra
 router.get('/:studentId/courses/:courseId/classes', getCourseClasses);
 router.get('/:studentId/class-suggestions', getClassSuggestions);
 router.post('/:studentId/class-registrations', createClassRegistration);
+router.delete('/:studentId/class-registrations/:classId', deleteClassRegistration);
 router.get('/:studentId/timetable', getStudentTimetable);
 
 export default router;

@@ -569,10 +569,40 @@ export async function registerClassSection(studentId: number, classId: number) {
     throw new Error('Bạn đã đăng ký một lớp khác của học phần này.');
   }
 
-  const currentTimetable = await getTimetable(studentId);
-  for (const registeredClass of currentTimetable) {
-    if (hasOverlap(classSection.detail, registeredClass.detail)) {
-      throw new Error(`Trùng lịch với lớp ${registeredClass.code} (${registeredClass.name}).`);
+  const classDetailObj = JSON.parse(classSection.detail || '{}');
+  const classBuoi = classDetailObj.buoi;
+
+  const classSlots = parseSchedule(classSection.detail);
+  for (const slot of classSlots) {
+    if (!slot.periods || slot.periods.length === 0) continue;
+    
+    const startPeriod = Math.min(...slot.periods);
+    const endPeriod = Math.max(...slot.periods);
+    const day = String(slot.day);
+    
+    const overlapQuery = `
+      SELECT co.course_code, co.course_name
+      FROM student_class_registrations scr
+      JOIN classes_course c ON scr.class_id = c.id
+      JOIN courses co ON c.course_id = co.id
+      WHERE scr.student_id = ?
+        AND CAST(json_extract(c.detail, '$.thu') AS TEXT) = ?
+        AND CAST(json_extract(c.detail, '$.buoi') AS TEXT) = ?
+        AND CAST(json_extract(c.detail, '$.tiet_bd') AS INTEGER) <= ?
+        AND CAST(json_extract(c.detail, '$.tiet_kt') AS INTEGER) >= ?
+      LIMIT 1
+    `;
+    
+    const overlap = await dbGet<any>(overlapQuery, [
+      studentId,
+      day,
+      classBuoi,
+      endPeriod,
+      startPeriod
+    ]);
+    
+    if (overlap) {
+      throw new Error(`Trùng lịch với lớp ${overlap.course_code} (${overlap.course_name}).`);
     }
   }
 
@@ -637,4 +667,45 @@ export async function getTimetable(studentId: number) {
     `,
     [studentId]
   );
+}
+
+export async function removeClassRegistration(studentId: number, classId: number) {
+  await ensureStudentRecord(studentId);
+
+  const activePeriod = await getActiveRegistrationPeriod('register_class');
+  if (!activePeriod) {
+    throw new Error('Hiện không trong giai đoạn đăng ký lớp học.');
+  }
+
+  try {
+    await dbRun('BEGIN IMMEDIATE TRANSACTION');
+    const result = await dbRun(
+      `
+        DELETE FROM student_class_registrations
+        WHERE student_id = ? AND class_id = ?
+      `,
+      [studentId, classId]
+    );
+
+    if (result.changes === 0) {
+      throw new Error('Không tìm thấy đăng ký lớp học phần này.');
+    }
+
+    await dbRun(
+      `
+        UPDATE classes_course
+        SET occupied_slots = MAX(0, occupied_slots - 1)
+        WHERE id = ?
+      `,
+      [classId]
+    );
+    await dbRun('COMMIT');
+  } catch (error) {
+    try {
+      await dbRun('ROLLBACK');
+    } catch (_rollbackError) {
+      //
+    }
+    throw error;
+  }
 }

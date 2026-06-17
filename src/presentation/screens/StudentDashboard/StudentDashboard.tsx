@@ -57,6 +57,8 @@ export const StudentDashboard = () => {
         isLoadingClasses,
         toggleCourseExpansion,
         handleRegisterClassSection,
+        handleCancelClassSection,
+        registeredClasses,
     } = useStudentDashboardViewModel(onLogout, account ?? null, onViewCurriculum);
 
     const { isDark, toggleTheme } = useTheme();
@@ -231,7 +233,7 @@ export const StudentDashboard = () => {
                                     <th>Tên học phần</th>
                                     <th>TT đăng ký</th>
                                     <th>Số TC</th>
-                                    <th>Hành động</th>
+                                    {currentRegPeriodType === 'register_program' && <th>Hành động</th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -255,30 +257,39 @@ export const StudentDashboard = () => {
                                                 </span>
                                             </td>
                                             <td>{item.credits}</td>
-                                            <td>
-                                                <button
-                                                    className="outline-btn"
-                                                    onClick={() => promptDeleteCourse(item.courseId)}
-                                                    disabled={isSubmitting}
-                                                >
-                                                    Xoá
-                                                </button>
-                                            </td>
+                                            {currentRegPeriodType === 'register_program' && (
+                                                <td>
+                                                    <button
+                                                        className="outline-btn"
+                                                        onClick={() => promptDeleteCourse(item.courseId)}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        Xoá
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
                                         {expandedCourseIds.has(item.courseId) && (
                                             <tr className="sub-table-row">
-                                                <td colSpan={7} style={{ padding: 0 }}>
+                                                <td colSpan={currentRegPeriodType === 'register_program' ? 7 : 6} style={{ padding: 0 }}>
                                                     <div className="sub-table-container" style={{ padding: '16px', background: 'var(--bg-color)', borderBottom: '1px solid var(--border-color)' }}>
                                                         <h4 style={{ margin: '0 0 12px 0' }}>Danh sách lớp học phần</h4>
                                                         {isLoadingClasses[item.courseId] ? (
                                                             <p>Đang tải...</p>
                                                         ) : (
-                                                            <table className="info-table sub-table" style={{ margin: 0 }}>
+                                                            <table className="info-table sub-table" style={{ margin: 0, fontSize: '0.85rem' }}>
                                                                 <thead>
                                                                     <tr>
                                                                         <th>Mã Lớp</th>
-                                                                        <th>Chi tiết lịch học</th>
-                                                                        <th>Số chỗ</th>
+                                                                        <th>Mã Lớp kèm</th>
+                                                                        <th>Thứ</th>
+                                                                        <th>Buổi</th>
+                                                                        <th>Tiết bd</th>
+                                                                        <th>Tiết kt</th>
+                                                                        <th>Phòng học</th>
+                                                                        <th>Lớp TN</th>
+                                                                        <th>Số lượng chỗ</th>
+                                                                        <th>Ghi chú</th>
                                                                         {currentRegPeriodType === 'register_class' && <th>Hành động</th>}
                                                                     </tr>
                                                                 </thead>
@@ -290,48 +301,46 @@ export const StudentDashboard = () => {
                                                                                 parsed = JSON.parse(cls.detail || '{}');
                                                                             } catch { }
 
+                                                                            const isRegistered = registeredClasses.some(rc => rc.classId === cls.id);
+                                                                            const isAnyClassRegisteredForCourse = registeredClasses.some(rc => rc.code === item.code);
+
                                                                             return (
                                                                                 <tr key={cls.id}>
                                                                                     <td>{parsed.ma_lop || cls.id}</td>
-                                                                                    <td>
-                                                                                        {(() => {
-                                                                                            if (Array.isArray(parsed)) {
-                                                                                                return parsed.map((s: any, idx: number) => (
-                                                                                                    <div key={idx}>
-                                                                                                        {s.day?.replace('T', 'Thứ ')} - Tiết {Array.isArray(s.periods) ? s.periods.join(', ') : s.period}
-                                                                                                    </div>
-                                                                                                ));
-                                                                                            } else if (parsed.slots && Array.isArray(parsed.slots)) {
-                                                                                                return parsed.slots.map((s: any, idx: number) => (
-                                                                                                    <div key={idx}>
-                                                                                                        {s.day?.replace('T', 'Thứ ')} - Tiết {Array.isArray(s.periods) ? s.periods.join(', ') : s.period}
-                                                                                                    </div>
-                                                                                                ));
-                                                                                            } else if (parsed.thu && parsed.tiet_bd && parsed.tiet_kt) {
-                                                                                                return (
-                                                                                                    <div>
-                                                                                                        Thứ {parsed.thu} - Tiết {parsed.tiet_bd}-{parsed.tiet_kt} {parsed.phong_hoc ? `(${parsed.phong_hoc})` : ''}
-                                                                                                    </div>
-                                                                                                );
-                                                                                            }
-                                                                                            return cls.detail;
-                                                                                        })()}
-                                                                                    </td>
+                                                                                    <td>{parsed.ma_lop_kem || ''}</td>
+                                                                                    <td>{parsed.thu || ''}</td>
+                                                                                    <td>{parsed.buoi || ''}</td>
+                                                                                    <td>{parsed.tiet_bd || ''}</td>
+                                                                                    <td>{parsed.tiet_kt || ''}</td>
+                                                                                    <td>{parsed.phong_hoc || ''}</td>
+                                                                                    <td>{parsed.can_tn || ''}</td>
                                                                                     <td>
                                                                                         <span className={`table-status status-${cls.occupiedSlots >= cls.totalSlots ? 'blocked' : 'available'}`}>
                                                                                             {cls.occupiedSlots}/{cls.totalSlots}
                                                                                         </span>
                                                                                     </td>
+                                                                                    <td>{parsed.ghi_chu || ''}</td>
                                                                                     {currentRegPeriodType === 'register_class' && (
                                                                                         <td>
-                                                                                            <button
-                                                                                                className="primary-btn"
-                                                                                                onClick={() => handleRegisterClassSection(cls.id, item.code)}
-                                                                                                disabled={isSubmitting || cls.occupiedSlots >= cls.totalSlots}
-                                                                                                style={{ padding: '4px 12px', fontSize: '0.85rem' }}
-                                                                                            >
-                                                                                                Đăng ký
-                                                                                            </button>
+                                                                                            {isRegistered ? (
+                                                                                                <button
+                                                                                                    className="outline-btn"
+                                                                                                    onClick={() => handleCancelClassSection(cls.id, item.code)}
+                                                                                                    disabled={isSubmitting}
+                                                                                                    style={{ padding: '4px 12px', fontSize: '0.85rem' }}
+                                                                                                >
+                                                                                                    Huỷ lớp
+                                                                                                </button>
+                                                                                            ) : isAnyClassRegisteredForCourse ? null : (
+                                                                                                <button
+                                                                                                    className="primary-btn"
+                                                                                                    onClick={() => handleRegisterClassSection(cls.id, item.code)}
+                                                                                                    disabled={isSubmitting || cls.occupiedSlots >= cls.totalSlots}
+                                                                                                    style={{ padding: '4px 12px', fontSize: '0.85rem', ...(cls.occupiedSlots >= cls.totalSlots ? { background: 'var(--border-color)', color: 'var(--text-secondary)' } : {}) }}
+                                                                                                >
+                                                                                                    {cls.occupiedSlots >= cls.totalSlots ? 'Hết chỗ' : 'Đăng ký'}
+                                                                                                </button>
+                                                                                            )}
                                                                                         </td>
                                                                                     )}
                                                                                 </tr>
@@ -339,7 +348,7 @@ export const StudentDashboard = () => {
                                                                         })
                                                                     ) : (
                                                                         <tr>
-                                                                            <td colSpan={currentRegPeriodType === 'register_class' ? 4 : 3} className="empty-table-cell">
+                                                                            <td colSpan={currentRegPeriodType === 'register_class' ? 11 : 10} className="empty-table-cell">
                                                                                 Không có lớp học phần nào đang mở cho học phần này
                                                                             </td>
                                                                         </tr>
@@ -355,7 +364,7 @@ export const StudentDashboard = () => {
                                 ))}
                                 {displayedSubjects.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} className="empty-table-cell">
+                                        <td colSpan={currentRegPeriodType === 'register_program' ? 7 : 6} className="empty-table-cell">
                                             Chưa có học phần đăng ký
                                         </td>
                                     </tr>
@@ -376,42 +385,56 @@ export const StudentDashboard = () => {
                         <h3 className="section-title">Thời khóa biểu tạm thời</h3>
                         <div className="table-scroll">
                             <div className="time-grid">
-                                <div className="grid-header">
+                                <div className="grid-header" style={{ marginLeft: '60px' }}>
                                     <div className="grid-cell corner"></div>
                                     {daysOfWeek.map((day) => (
                                         <div key={day} className="grid-cell day-header">{day}</div>
                                     ))}
                                 </div>
 
-                                {morningPeriods.map((period) => (
-                                    <div key={`m-${period}`} className="grid-row">
-                                        <div className="grid-cell period-label">Tiết {period}</div>
-                                        {daysOfWeek.map((day) => {
-                                            const event = timeGridEvents.find(e => e.day === day && e.period === period);
-                                            return (
-                                                <div key={`${day}-${period}`} className={`grid-cell ${event ? 'active' : ''}`}>
-                                                    {event && <span className="event-name">{event.name}</span>}
-                                                </div>
-                                            );
-                                        })}
+                                <div style={{ display: 'flex' }}>
+                                    <div style={{ width: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', background: '#f9fafb', borderRight: '1px solid #eaecf0', borderBottom: '1px solid #eaecf0', color: '#344054', textTransform: 'uppercase' }}>
+                                        Sáng
                                     </div>
-                                ))}
-
-                                <div className="grid-divider">Nghỉ trưa</div>
-
-                                {afternoonPeriods.map((period) => (
-                                    <div key={`a-${period}`} className="grid-row">
-                                        <div className="grid-cell period-label">Tiết {period}</div>
-                                        {daysOfWeek.map((day) => {
-                                            const event = timeGridEvents.find(e => e.day === day && e.period === period);
-                                            return (
-                                                <div key={`${day}-${period}`} className={`grid-cell ${event ? 'active' : ''}`}>
-                                                    {event && <span className="event-name">{event.name}</span>}
-                                                </div>
-                                            );
-                                        })}
+                                    <div style={{ flex: 1 }}>
+                                        {morningPeriods.map((period) => (
+                                            <div key={`m-${period}`} className="grid-row">
+                                                <div className="grid-cell period-label">Tiết {period}</div>
+                                                {daysOfWeek.map((day) => {
+                                                    const event = timeGridEvents.find(e => e.day === day && e.period === period);
+                                                    return (
+                                                        <div key={`${day}-${period}`} className={`grid-cell ${event ? 'active' : ''}`}>
+                                                            {event && <span className="event-name">{event.name}</span>}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                </div>
+
+                                <div className="grid-divider" style={{ marginLeft: '60px' }}>Nghỉ trưa</div>
+
+                                <div style={{ display: 'flex' }}>
+                                    <div style={{ width: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', background: '#f9fafb', borderRight: '1px solid #eaecf0', borderBottom: '1px solid #eaecf0', color: '#344054', textTransform: 'uppercase' }}>
+                                        Chiều
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        {afternoonPeriods.map((period) => (
+                                            <div key={`a-${period}`} className="grid-row">
+                                                <div className="grid-cell period-label">Tiết {period - 6}</div>
+                                                {daysOfWeek.map((day) => {
+                                                    const event = timeGridEvents.find(e => e.day === day && e.period === period);
+                                                    return (
+                                                        <div key={`${day}-${period}`} className={`grid-cell ${event ? 'active' : ''}`}>
+                                                            {event && <span className="event-name">{event.name}</span>}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </section>

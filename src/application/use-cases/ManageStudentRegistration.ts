@@ -37,6 +37,10 @@ export class ManageStudentRegistration {
     return this.repository.registerClass(studentId, classId);
   }
 
+  cancelClassRegistration(studentId: number, classId: number) {
+    return this.repository.cancelClassRegistration(studentId, classId);
+  }
+
   getClassesForCourse(studentId: number, courseId: number) {
     return this.repository.getClassesForCourse(studentId, courseId);
   }

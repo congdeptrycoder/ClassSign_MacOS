@@ -10,6 +10,7 @@ import {
   searchClassSuggestions,
   searchCourseSuggestions,
   getClassesForCourse,
+  removeClassRegistration,
 } from './student-registration.service';
 
 function parseStudentId(req: Request) {
@@ -137,5 +138,19 @@ export async function getStudentTimetable(req: Request, res: Response) {
   } catch (err) {
     console.error('getStudentTimetable error:', err);
     return handleRouteError(res, err, 'Không thể lấy thời khóa biểu.');
+  }
+}
+
+export async function deleteClassRegistration(req: Request, res: Response) {
+  try {
+    const classId = Number(req.params.classId);
+    if (!Number.isInteger(classId)) {
+      throw new Error('Mã lớp học phần không hợp lệ.');
+    }
+    await removeClassRegistration(parseStudentId(req), classId);
+    return sendSuccess(res, null, 'Xoá đăng ký lớp học phần thành công.');
+  } catch (err) {
+    console.error('deleteClassRegistration error:', err);
+    return handleRouteError(res, err, 'Không thể xoá đăng ký lớp học phần.');
   }
 }

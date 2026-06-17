@@ -16477,6 +16477,9 @@ class ManageStudentRegistration {
   registerClass(studentId, classId) {
     return this.repository.registerClass(studentId, classId);
   }
+  cancelClassRegistration(studentId, classId) {
+    return this.repository.cancelClassRegistration(studentId, classId);
+  }
   getClassesForCourse(studentId, courseId) {
     return this.repository.getClassesForCourse(studentId, courseId);
   }
@@ -16517,6 +16520,9 @@ class StudentRegistrationRepositoryImpl {
       classId
     });
   }
+  cancelClassRegistration(studentId, classId) {
+    return apiClient.delete(`/students/${studentId}/class-registrations/${classId}`);
+  }
   getClassesForCourse(studentId, courseId) {
     return apiClient.get(
       `/students/${studentId}/courses/${courseId}/classes`
@@ -16541,6 +16547,25 @@ function parseTimetableEvents(entries) {
     if (!entry.detail) return [];
     try {
       const detail = JSON.parse(entry.detail);
+      if (detail.thu && detail.tiet_bd && detail.tiet_kt) {
+        const dayStr = `T${detail.thu}`;
+        let start = parseInt(detail.tiet_bd, 10);
+        let end = parseInt(detail.tiet_kt, 10);
+        if (isNaN(start) || isNaN(end)) return [];
+        if (detail.buoi === "Chiều") {
+          start += 6;
+          end += 6;
+        }
+        const events = [];
+        for (let i = start; i <= end; i++) {
+          events.push({
+            day: dayStr,
+            period: i,
+            name: entry.code
+          });
+        }
+        return events;
+      }
       const slots = Array.isArray(detail) ? detail : detail.slots;
       if (!Array.isArray(slots)) return [];
       return slots.flatMap((slot) => {
@@ -16567,6 +16592,7 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
   const [isSearching, setIsSearching] = reactExports.useState(false);
   const [searchError, setSearchError] = reactExports.useState(null);
   const [registeredSubjects, setRegisteredSubjects] = reactExports.useState([]);
+  const [registeredClasses, setRegisteredClasses] = reactExports.useState([]);
   const [timeGridEvents, setTimeGridEvents] = reactExports.useState([]);
   const [currentRegPeriodType, setCurrentRegPeriodType] = reactExports.useState("none");
   const [isSubmitting, setIsSubmitting] = reactExports.useState(false);
@@ -16594,6 +16620,7 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
         status: toStatusLabel(course.status)
       }))
     );
+    setRegisteredClasses(timetable);
     setTimeGridEvents(parseTimetableEvents(timetable));
   };
   const handleSelectSuggestion = (item) => {
@@ -16827,6 +16854,25 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
       setIsSubmitting(false);
     }
   };
+  const handleCancelClassSection = async (classId, classCode) => {
+    if (currentRegPeriodType !== "register_class") {
+      window.alert("Hiện không trong giai đoạn đăng ký lớp học.");
+      return;
+    }
+    if (!window.confirm(`Bạn có chắc chắn muốn huỷ đăng ký lớp ${classCode}?`)) {
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      await registrationUseCase$1.cancelClassRegistration(studentId, classId);
+      setAlarmMessage(`Đã huỷ lớp học phần ${classCode} thành công.`);
+      await reloadStudentData();
+    } catch (error) {
+      setAlarmMessage(error.message || "Huỷ thất bại.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   return {
     isUserInfoVisible,
     toggleUserInfo,
@@ -16842,6 +16888,7 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
     handleViewCurriculum,
     handleLogout,
     registeredSubjects,
+    registeredClasses,
     timeGridEvents,
     currentRegPeriodType,
     isSubmitting,
@@ -16860,7 +16907,8 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
     courseClassesData,
     isLoadingClasses,
     toggleCourseExpansion,
-    handleRegisterClassSection
+    handleRegisterClassSection,
+    handleCancelClassSection
   };
 };
 const AlarmOneChoose = ({ message, buttonText, onClose }) => {
@@ -16927,7 +16975,9 @@ const StudentDashboard = () => {
     courseClassesData,
     isLoadingClasses,
     toggleCourseExpansion,
-    handleRegisterClassSection
+    handleRegisterClassSection,
+    handleCancelClassSection,
+    registeredClasses
   } = useStudentDashboardViewModel(onLogout, account ?? null, onViewCurriculum);
   const { isDark, toggleTheme } = useTheme();
   const studentLabel = `${account?.name ?? "Sinh viên"} - ${account?.id_card ?? account?.username ?? account?.id ?? ""}`;
@@ -16985,7 +17035,7 @@ const StudentDashboard = () => {
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `phase-badge ${isRegistrationOpen ? "open" : "closed"}`, children: phaseBadge })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "registration-panel card", children: [
+      currentRegPeriodType === "register_program" && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "registration-panel card", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-header", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: searchLabel }),
@@ -16999,7 +17049,7 @@ const StudentDashboard = () => {
               "input",
               {
                 className: "search-input",
-                placeholder: currentRegPeriodType === "register_program" ? "Nhập mã hoặc tên học phần" : "Nhập mã hoặc tên lớp học phần",
+                placeholder: "Nhập mã hoặc tên học phần",
                 value: searchQuery,
                 onChange: (e) => handleSearchQueryChange(e.target.value),
                 onFocus: () => setIsSuggestionVisible(true),
@@ -17064,13 +17114,13 @@ const StudentDashboard = () => {
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "table-scroll", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: { width: "40px" } }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: { width: "40px" }, children: "DS Lớp" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "ID" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã HP" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Tên học phần" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "TT đăng ký" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Số TC" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Hành động" })
+              currentRegPeriodType === "register_program" && /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Hành động" })
             ] }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
               displayedSubjects.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs(React$2.Fragment, { children: [
@@ -17078,9 +17128,8 @@ const StudentDashboard = () => {
                   /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "button",
                     {
-                      className: "icon-btn",
+                      className: "expand-btn",
                       onClick: () => toggleCourseExpansion(item.courseId),
-                      style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" },
                       children: expandedCourseIds.has(item.courseId) ? "▼" : "▶"
                     }
                   ) }),
@@ -17089,7 +17138,7 @@ const StudentDashboard = () => {
                   /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.name }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `table-status status-${getRegisteredStatusClass(item.rawStatus)}`, children: item.status }) }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.credits }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  currentRegPeriodType === "register_program" && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "button",
                     {
                       className: "outline-btn",
@@ -17099,50 +17148,70 @@ const StudentDashboard = () => {
                     }
                   ) })
                 ] }),
-                expandedCourseIds.has(item.courseId) && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { className: "sub-table-row", children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 7, style: { padding: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sub-table-container", style: { padding: "16px", background: "var(--bg-color)", borderBottom: "1px solid var(--border-color)" }, children: [
+                expandedCourseIds.has(item.courseId) && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { className: "sub-table-row", children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: currentRegPeriodType === "register_program" ? 7 : 6, style: { padding: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sub-table-container", style: { padding: "16px", background: "var(--bg-color)", borderBottom: "1px solid var(--border-color)" }, children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { style: { margin: "0 0 12px 0" }, children: "Danh sách lớp học phần" }),
-                  isLoadingClasses[item.courseId] ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Đang tải..." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table sub-table", style: { margin: 0 }, children: [
+                  isLoadingClasses[item.courseId] ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Đang tải..." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table sub-table", style: { margin: 0, fontSize: "0.85rem" }, children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "ID Lớp" }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Chi tiết lịch học" }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Số chỗ" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã Lớp" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã Lớp kèm" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Thứ" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Buổi" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Tiết bd" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Tiết kt" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Phòng học" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Lớp TN" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Số lượng chỗ" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Ghi chú" }),
                       currentRegPeriodType === "register_class" && /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Hành động" })
                     ] }) }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: courseClassesData[item.courseId]?.length > 0 ? courseClassesData[item.courseId].map((cls) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: cls.id }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: (() => {
-                        try {
-                          const parsed = JSON.parse(cls.detail || "[]");
-                          const slots = Array.isArray(parsed) ? parsed : parsed.slots;
-                          return slots?.map((s, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                            s.day.replace("T", "Thứ "),
-                            " - Tiết ",
-                            Array.isArray(s.periods) ? s.periods.join(", ") : s.period
-                          ] }, idx));
-                        } catch {
-                          return cls.detail;
-                        }
-                      })() }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `table-status status-${cls.occupiedSlots >= cls.totalSlots ? "blocked" : "available"}`, children: [
-                        cls.occupiedSlots,
-                        "/",
-                        cls.totalSlots
-                      ] }) }),
-                      currentRegPeriodType === "register_class" && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "button",
-                        {
-                          className: "primary-btn",
-                          onClick: () => handleRegisterClassSection(cls.id, item.code),
-                          disabled: isSubmitting || cls.occupiedSlots >= cls.totalSlots,
-                          style: { padding: "4px 12px", fontSize: "0.85rem" },
-                          children: "Đăng ký"
-                        }
-                      ) })
-                    ] }, cls.id)) : /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: currentRegPeriodType === "register_class" ? 4 : 3, className: "empty-table-cell", children: "Không có lớp học phần nào đang mở cho học phần này" }) }) })
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: courseClassesData[item.courseId]?.length > 0 ? courseClassesData[item.courseId].map((cls) => {
+                      let parsed = {};
+                      try {
+                        parsed = JSON.parse(cls.detail || "{}");
+                      } catch {
+                      }
+                      const isRegistered = registeredClasses.some((rc) => rc.classId === cls.id);
+                      const isAnyClassRegisteredForCourse = registeredClasses.some((rc) => rc.code === item.code);
+                      return /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: parsed.ma_lop || cls.id }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: parsed.ma_lop_kem || "" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: parsed.thu || "" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: parsed.buoi || "" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: parsed.tiet_bd || "" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: parsed.tiet_kt || "" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: parsed.phong_hoc || "" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: parsed.can_tn || "" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `table-status status-${cls.occupiedSlots >= cls.totalSlots ? "blocked" : "available"}`, children: [
+                          cls.occupiedSlots,
+                          "/",
+                          cls.totalSlots
+                        ] }) }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: parsed.ghi_chu || "" }),
+                        currentRegPeriodType === "register_class" && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: isRegistered ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            className: "outline-btn",
+                            onClick: () => handleCancelClassSection(cls.id, item.code),
+                            disabled: isSubmitting,
+                            style: { padding: "4px 12px", fontSize: "0.85rem" },
+                            children: "Huỷ lớp"
+                          }
+                        ) : isAnyClassRegisteredForCourse ? null : /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            className: "primary-btn",
+                            onClick: () => handleRegisterClassSection(cls.id, item.code),
+                            disabled: isSubmitting || cls.occupiedSlots >= cls.totalSlots,
+                            style: { padding: "4px 12px", fontSize: "0.85rem", ...cls.occupiedSlots >= cls.totalSlots ? { background: "var(--border-color)", color: "var(--text-secondary)" } : {} },
+                            children: cls.occupiedSlots >= cls.totalSlots ? "Hết chỗ" : "Đăng ký"
+                          }
+                        ) })
+                      ] }, cls.id);
+                    }) : /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: currentRegPeriodType === "register_class" ? 11 : 10, className: "empty-table-cell", children: "Không có lớp học phần nào đang mở cho học phần này" }) }) })
                   ] })
                 ] }) }) })
               ] }, item.id)),
-              displayedSubjects.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 7, className: "empty-table-cell", children: "Chưa có học phần đăng ký" }) })
+              displayedSubjects.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: currentRegPeriodType === "register_program" ? 7 : 6, className: "empty-table-cell", children: "Chưa có học phần đăng ký" }) })
             ] })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-footer", style: { marginTop: "16px", padding: "12px", background: "var(--surface-color)", borderRadius: "8px", border: "1px solid var(--border-color)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "credits-info", style: { display: "flex", flexDirection: "column", gap: "8px" }, children: [
@@ -17160,31 +17229,37 @@ const StudentDashboard = () => {
       currentRegPeriodType === "register_class" && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "timetable-section card", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "section-title", children: "Thời khóa biểu tạm thời" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-scroll", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "time-grid", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-header", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-header", style: { marginLeft: "60px" }, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid-cell corner" }),
             daysOfWeek.map((day) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid-cell day-header", children: day }, day))
           ] }),
-          morningPeriods.map((period) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-row", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-cell period-label", children: [
-              "Tiết ",
-              period
-            ] }),
-            daysOfWeek.map((day) => {
-              const event = timeGridEvents.find((e) => e.day === day && e.period === period);
-              return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `grid-cell ${event ? "active" : ""}`, children: event && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "event-name", children: event.name }) }, `${day}-${period}`);
-            })
-          ] }, `m-${period}`)),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid-divider", children: "Nghỉ trưa" }),
-          afternoonPeriods.map((period) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-row", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-cell period-label", children: [
-              "Tiết ",
-              period
-            ] }),
-            daysOfWeek.map((day) => {
-              const event = timeGridEvents.find((e) => e.day === day && e.period === period);
-              return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `grid-cell ${event ? "active" : ""}`, children: event && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "event-name", children: event.name }) }, `${day}-${period}`);
-            })
-          ] }, `a-${period}`))
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "60px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", background: "#f9fafb", borderRight: "1px solid #eaecf0", borderBottom: "1px solid #eaecf0", color: "#344054", textTransform: "uppercase" }, children: "Sáng" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1 }, children: morningPeriods.map((period) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-row", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-cell period-label", children: [
+                "Tiết ",
+                period
+              ] }),
+              daysOfWeek.map((day) => {
+                const event = timeGridEvents.find((e) => e.day === day && e.period === period);
+                return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `grid-cell ${event ? "active" : ""}`, children: event && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "event-name", children: event.name }) }, `${day}-${period}`);
+              })
+            ] }, `m-${period}`)) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid-divider", style: { marginLeft: "60px" }, children: "Nghỉ trưa" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "60px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", background: "#f9fafb", borderRight: "1px solid #eaecf0", borderBottom: "1px solid #eaecf0", color: "#344054", textTransform: "uppercase" }, children: "Chiều" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1 }, children: afternoonPeriods.map((period) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-row", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid-cell period-label", children: [
+                "Tiết ",
+                period - 6
+              ] }),
+              daysOfWeek.map((day) => {
+                const event = timeGridEvents.find((e) => e.day === day && e.period === period);
+                return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `grid-cell ${event ? "active" : ""}`, children: event && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "event-name", children: event.name }) }, `${day}-${period}`);
+              })
+            ] }, `a-${period}`)) })
+          ] })
         ] }) })
       ] })
     ] })
