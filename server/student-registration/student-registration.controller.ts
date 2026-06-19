@@ -134,7 +134,8 @@ export async function createClassRegistration(req: Request, res: Response) {
 
 export async function getStudentTimetable(req: Request, res: Response) {
   try {
-    return sendSuccess(res, await getTimetable(parseStudentId(req)));
+    const semester = req.query.semesterId ? String(req.query.semesterId) : undefined;
+    return sendSuccess(res, await getTimetable(parseStudentId(req), semester));
   } catch (err) {
     console.error('getStudentTimetable error:', err);
     return handleRouteError(res, err, 'Không thể lấy thời khóa biểu.');

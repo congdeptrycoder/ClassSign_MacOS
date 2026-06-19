@@ -41,7 +41,7 @@ export const StudentDashboard = () => {
 
     const { currentRegPeriodType, activeSemesterId, activeSemesterName } = useRegistrationPeriodViewModel();
 
-    const { registeredClasses, timeGridEvents } = useTimetableViewModel(studentId);
+    const { registeredClasses, timeGridEvents } = useTimetableViewModel(studentId, activeSemesterId);
 
     const {
         searchQuery,
@@ -282,11 +282,11 @@ export const StudentDashboard = () => {
                                     <React.Fragment key={item.id}>
                                         <tr className={expandedCourseIds.has(item.courseId) ? 'expanded-row' : ''}>
                                             {currentRegPeriodType === 'register_class' && (
-                                                <td>
-                                                    <button
-                                                        className="expand-btn"
-                                                        onClick={() => toggleCourseExpansion(item.courseId)}
-                                                    >
+                                                <td 
+                                                    onClick={() => toggleCourseExpansion(item.courseId)} 
+                                                    style={{ cursor: 'pointer', textAlign: 'center' }}
+                                                >
+                                                    <button className="expand-btn" style={{ pointerEvents: 'none' }}>
                                                         {expandedCourseIds.has(item.courseId) ? '▼' : '▶'}
                                                     </button>
                                                 </td>

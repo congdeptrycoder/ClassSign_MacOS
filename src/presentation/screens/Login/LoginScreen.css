@@ -110,13 +110,15 @@
 }
 
 .input-success {
-  border-color: var(--statusSuccess) !important;
-  background-color: transparent !important;
+  background-color: var(--statusSuccess) !important;
+  color: #fff !important;
+  border-color: transparent !important;
 }
 
 .input-error {
-  border-color: var(--statusDanger) !important;
-  background-color: transparent !important;
+  background-color: var(--statusDanger) !important;
+  color: #fff !important;
+  border-color: transparent !important;
 }
 
 .login-notification {

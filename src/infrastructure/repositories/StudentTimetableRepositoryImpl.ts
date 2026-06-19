@@ -5,7 +5,8 @@ import { ITimetableRepository } from '../../domain/repositories/ITimetableReposi
 import { apiClient } from '../api/apiClient';
 
 export class StudentTimetableRepositoryImpl implements ITimetableRepository {
-  getTimetable(studentId: number): Promise<TimetableEntry[]> {
-    return apiClient.get<TimetableEntry[]>(`/students/${studentId}/timetable`);
+  getTimetable(studentId: number, semesterId?: string): Promise<TimetableEntry[]> {
+    const query = semesterId ? `?semesterId=${semesterId}` : '';
+    return apiClient.get<TimetableEntry[]>(`/students/${studentId}/timetable${query}`);
   }
 }

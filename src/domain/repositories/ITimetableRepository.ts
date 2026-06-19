@@ -3,5 +3,5 @@ import {
 } from '../entities/StudentRegistration';
 
 export interface ITimetableRepository {
-  getTimetable(studentId: number): Promise<TimetableEntry[]>;
+  getTimetable(studentId: number, semesterId?: string): Promise<TimetableEntry[]>;
 }

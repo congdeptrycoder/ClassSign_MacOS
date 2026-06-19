@@ -3,7 +3,7 @@ import { ITimetableRepository } from '../../domain/repositories/ITimetableReposi
 export class GetTimetableUseCase {
     constructor(private readonly repository: ITimetableRepository) {}
 
-    execute(studentId: number) {
-        return this.repository.getTimetable(studentId);
+    execute(studentId: number, semesterId?: string) {
+        return this.repository.getTimetable(studentId, semesterId);
     }
 }

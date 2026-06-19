@@ -43,19 +43,19 @@ export function parseTimetableEvents(entries: TimetableEntry[]): TimeEvent[] {
     });
 }
 
-export const useTimetableViewModel = (studentId: number) => {
+export const useTimetableViewModel = (studentId: number, semesterId?: string) => {
     const [registeredClasses, setRegisteredClasses] = useState<TimetableEntry[]>([]);
     const [timeGridEvents, setTimeGridEvents] = useState<TimeEvent[]>([]);
 
     const reloadTimetable = useCallback(async () => {
         try {
-            const timetable = await timetableController.getTimetable(studentId);
+            const timetable = await timetableController.getTimetable(studentId, semesterId);
             setRegisteredClasses(timetable);
             setTimeGridEvents(parseTimetableEvents(timetable));
         } catch (error) {
             console.error('Không thể tải thời khóa biểu', error);
         }
-    }, [studentId]);
+    }, [studentId, semesterId]);
 
     useEffect(() => {
         reloadTimetable();
