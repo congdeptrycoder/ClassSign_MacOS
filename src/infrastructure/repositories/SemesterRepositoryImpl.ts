@@ -20,4 +20,13 @@ export class SemesterRepositoryImpl implements ISemesterRepository {
       throw new Error(error.message || 'Lỗi kết nối tới máy chủ.');
     }
   }
+
+  async createSemester(semesterCode: string): Promise<void> {
+    try {
+      await apiClient.post('/semesters', { semester: semesterCode });
+    } catch (error: any) {
+      console.error('SemesterRepositoryImpl createSemester error:', error);
+      throw new Error(error.response?.data?.message || 'Lỗi thêm học kỳ.');
+    }
+  }
 }

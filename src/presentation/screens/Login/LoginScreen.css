@@ -110,17 +110,17 @@
 }
 
 .input-success {
-  border-color: #28a745 !important;
-  background-color: rgba(131, 195, 20, 0.3) !important;
+  border-color: var(--statusSuccess) !important;
+  background-color: transparent !important;
 }
 
 .input-error {
-  border-color: #dc3545 !important;
-  background-color: rgba(220, 53, 69, 0.1) !important;
+  border-color: var(--statusDanger) !important;
+  background-color: transparent !important;
 }
 
 .login-notification {
-  background-color: #ffc107;
+  background-color: var(--statusWarning);
   color: #fff;
   padding: 10px;
   border-radius: 8px;

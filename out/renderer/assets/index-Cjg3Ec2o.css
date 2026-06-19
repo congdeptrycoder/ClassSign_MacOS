@@ -26,6 +26,15 @@
   --loginGradient-end: #FF4D4D;
   --themeToggleBackground: rgba(255, 255, 255, 0.25);
   --themeToggleText: #FFFFFF;
+  --statusSuccess: #4caf50;
+  --statusDanger: #f44336;
+  --statusWarning: #ff9800;
+  --statusInfo: #2196F3;
+  --btnDetail: #337ab7;
+  --btnEdit: #f0ad4e;
+  --btnDelete: #d9534f;
+  --btnCancel: #aaaaaa;
+  --warningText: #83b13e;
 }
 
 html, body {
@@ -194,17 +203,17 @@ input {
 }
 
 .input-success {
-  border-color: #28a745 !important;
-  background-color: rgba(131, 195, 20, 0.3) !important;
+  border-color: var(--statusSuccess) !important;
+  background-color: transparent !important;
 }
 
 .input-error {
-  border-color: #dc3545 !important;
-  background-color: rgba(220, 53, 69, 0.1) !important;
+  border-color: var(--statusDanger) !important;
+  background-color: transparent !important;
 }
 
 .login-notification {
-  background-color: #ffc107;
+  background-color: var(--statusWarning);
   color: #fff;
   padding: 10px;
   border-radius: 8px;
@@ -287,9 +296,9 @@ input {
 }
 
 .warning-banner {
-  background: #fff3cd;
-  border: 1px solid #ffeeba;
-  color: #856404;
+  background: transparent;
+  border: 1px solid var(--statusWarning);
+  color: var(--statusWarning);
   padding: 12px;
   border-radius: 8px;
   font-weight: 700;
@@ -409,12 +418,12 @@ input {
 }
 
 .delete-btn {
-  background-color: #dc3545;
+  background-color: var(--btnDelete);
   color: white;
 }
 
 .detail-btn {
-  background-color: #2196F3;
+  background-color: var(--btnDetail);
   color: white;
   padding: 6px 12px;
   font-size: 12px;
@@ -425,8 +434,8 @@ input {
 }
 
 .edit-btn-yellow {
-  background-color: #FFC107;
-  color: black;
+  background-color: var(--btnEdit);
+  color: var(--buttonSecondaryText);
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;
@@ -498,7 +507,7 @@ input {
 }
 
 .alarm-box {
-    background: #ffffff;
+    background: var(--modalBackground);
     padding: 24px;
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -511,11 +520,11 @@ input {
     font-size: 16px;
     font-weight: 500;
     margin-bottom: 20px;
-    color: var(--text-primary);
+    color: var(--text);
 }
 
 .alarm-button {
-    background-color: #e53935;
+    background-color: var(--btnDelete);
     color: white;
     border: none;
     padding: 10px 24px;
@@ -527,7 +536,7 @@ input {
 }
 
 .alarm-button:hover {
-    background-color: #d32f2f;
+    filter: brightness(0.9);
 }
 .alarm-overlay {
     position: fixed;
@@ -544,7 +553,7 @@ input {
 }
 
 .alarm-box {
-    background: #ffffff;
+    background: var(--modalBackground);
     padding: 24px;
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -557,7 +566,7 @@ input {
     font-size: 16px;
     font-weight: 500;
     margin-bottom: 20px;
-    color: var(--text-primary);
+    color: var(--text);
 }
 
 .alarm-buttons {
@@ -567,7 +576,7 @@ input {
 }
 
 .alarm-button-primary {
-    background-color: #e53935;
+    background-color: var(--btnDelete);
     color: white;
     border: none;
     padding: 10px 24px;
@@ -579,13 +588,13 @@ input {
 }
 
 .alarm-button-primary:hover {
-    background-color: #d32f2f;
+    filter: brightness(0.9);
 }
 
 .alarm-button-secondary {
     background-color: transparent;
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
+    color: var(--textSecondary);
+    border: 1px solid var(--inputBorder);
     padding: 10px 24px;
     border-radius: 6px;
     font-size: 14px;
@@ -595,11 +604,11 @@ input {
 }
 
 .alarm-button-secondary:hover {
-    background-color: var(--bg-hover);
+    background-color: var(--surface);
 }
 .student-container {
   height: 100vh;
-  background: #f4f6f8;
+  background: var(--background);
   color: var(--text);
   display: flex;
   flex-direction: column;
@@ -608,7 +617,7 @@ input {
 
 .nav-bar {
   height: 64px;
-  background: #b00000;
+  background: var(--navBar);
   color: #fff;
   display: flex;
   align-items: center;
@@ -630,7 +639,7 @@ input {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--card);
   object-fit: contain;
 }
 
@@ -676,8 +685,8 @@ input {
   height: 36px;
   border: 0;
   border-radius: 6px;
-  background: #b00000;
-  color: #fff;
+  background: var(--buttonPrimary);
+  color: var(--buttonPrimaryText);
   font-weight: 700;
   cursor: pointer;
 }
@@ -699,7 +708,7 @@ input {
 
 .page-kicker {
   margin: 0 0 4px;
-  color: #667085;
+  color: var(--textSecondary);
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -707,7 +716,7 @@ input {
 
 .student-page-head h1 {
   margin: 0;
-  color: #101828;
+  color: var(--text);
   font-size: 24px;
   line-height: 1.2;
 }
@@ -737,7 +746,7 @@ input {
 
 .card {
   background: var(--card);
-  border: 1px solid #e4e7ec;
+  border: 1px solid var(--tableBorder);
   border-radius: 8px;
   box-shadow: 0 8px 22px rgba(16, 24, 40, 0.06);
 }
@@ -764,13 +773,13 @@ input {
 
 .panel-header h2 {
   margin: 0;
-  color: #101828;
+  color: var(--text);
   font-size: 18px;
 }
 
 .panel-header p {
   margin: 4px 0 0;
-  color: #667085;
+  color: var(--textSecondary);
   font-size: 13px;
 }
 
@@ -778,17 +787,17 @@ input {
 .secondary-btn {
   height: 38px;
   padding: 0 14px;
-  border: 1px solid #b00000;
+  border: 1px solid var(--buttonPrimary);
   border-radius: 6px;
-  background: #fff;
-  color: #9b0000;
+  background: transparent;
+  color: var(--buttonPrimary);
   font-weight: 700;
   cursor: pointer;
 }
 
 .outline-btn:hover,
 .secondary-btn:hover {
-  background: #fff5f5;
+  background: var(--themeToggleBackground);
 }
 
 .registration-box {
@@ -806,10 +815,10 @@ input {
   width: 100%;
   height: 42px;
   box-sizing: border-box;
-  border: 1px solid #d0d5dd;
+  border: 1px solid var(--inputBorder);
   border-radius: 6px;
-  background: #fff;
-  color: #101828;
+  background: var(--inputBackground);
+  color: var(--inputText);
   font-size: 14px;
   padding: 0 12px;
   outline: none;
@@ -825,8 +834,8 @@ input {
   padding: 0 16px;
   border: 0;
   border-radius: 6px;
-  background: #a50000;
-  color: #fff;
+  background: var(--buttonPrimary);
+  color: var(--buttonPrimaryText);
   font-weight: 700;
   cursor: pointer;
 }
@@ -848,33 +857,41 @@ input {
   z-index: 50;
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid #d0d5dd;
+  border: 1px solid var(--tableBorder);
   border-radius: 8px;
-  background: #fff;
+  background: var(--card);
   box-shadow: 0 18px 36px rgba(16, 24, 40, 0.18);
 }
 
 .suggestion-item {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr) 58px 118px;
+  grid-template-columns: 86px minmax(0, 1fr) 58px;
   gap: 10px;
   width: 100%;
   padding: 11px 12px;
   border: 0;
-  border-bottom: 1px solid #eef2f6;
+  border-bottom: 1px solid var(--separator);
   background: transparent;
-  color: #101828;
+  color: var(--text);
   text-align: left;
   cursor: pointer;
 }
 
 .suggestion-item:hover {
-  background: #fff7f7;
+  background: var(--surface);
+}
+
+.suggestion-badges-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 .suggestion-code,
 .course-code {
-  color: #9b0000;
+  color: var(--text);
   font-weight: 800;
 }
 
@@ -886,7 +903,7 @@ input {
 }
 
 .suggestion-credits {
-  color: #475467;
+  color: var(--textSecondary);
   font-weight: 700;
   text-align: right;
 }
@@ -906,7 +923,7 @@ input {
 
 .suggestion-state {
   padding: 12px;
-  color: #667085;
+  color: var(--textSecondary);
   font-size: 14px;
 }
 
@@ -942,8 +959,8 @@ input {
 .section-title {
   margin: 0 0 14px;
   padding-left: 10px;
-  border-left: 4px solid #b00000;
-  color: #9b0000;
+  border-left: 4px solid var(--buttonPrimary);
+  color: var(--text);
   font-size: 17px;
   font-weight: 800;
 }
@@ -966,31 +983,31 @@ input {
 .info-table th,
 .info-table td {
   padding: 11px 12px;
-  border-bottom: 1px solid #eaecf0;
+  border-bottom: 1px solid var(--tableBorder);
   text-align: left;
 }
 
 .info-table th {
-  background: #f2f4f7;
-  color: #344054;
+  background: var(--tableHeader);
+  color: var(--tableHeaderText);
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .info-table td {
-  color: #101828;
+  color: var(--tableCell);
   font-size: 14px;
 }
 
 .empty-table-cell {
-  color: #667085;
+  color: var(--textSecondary);
   text-align: center;
 }
 
 .no-phase-panel {
   padding: 18px;
-  color: #101828;
+  color: var(--text);
 }
 
 .no-phase-panel h3 {
@@ -999,7 +1016,7 @@ input {
 
 .no-phase-panel p {
   margin: 0;
-  color: #667085;
+  color: var(--textSecondary);
 }
 
 .time-grid {
@@ -1012,19 +1029,19 @@ input {
 .grid-row {
   display: grid;
   grid-template-columns: 100px repeat(7, 1fr);
-  border-bottom: 1px solid #eaecf0;
+  border-bottom: 1px solid var(--tableBorder);
 }
 
 .grid-header {
-  background: #f2f4f7;
+  background: var(--tableHeader);
   font-weight: 800;
-  color: #344054;
+  color: var(--tableHeaderText);
 }
 
 .grid-cell {
   min-height: 40px;
   padding: 10px;
-  border-right: 1px solid #eaecf0;
+  border-right: 1px solid var(--tableBorder);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1032,19 +1049,23 @@ input {
 }
 
 .grid-cell.active {
-  background: #fff5f5;
+  background: #ffffff;
+}
+
+.grid-cell.active .event-name {
+  color: #9b0000;
 }
 
 .event-name {
-  color: #9b0000;
+  color: var(--text);
   font-size: 12px;
   font-weight: 800;
 }
 
 .grid-divider {
   padding: 8px;
-  background: #f9fafb;
-  color: #667085;
+  background: var(--surface);
+  color: var(--textSecondary);
   text-align: center;
   font-size: 12px;
   font-weight: 800;
@@ -1087,7 +1108,7 @@ input {
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #667085;
+  color: var(--textSecondary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1097,8 +1118,8 @@ input {
 }
 
 .expand-btn:hover {
-  background: #f2f4f7;
-  color: #101828;
+  background: var(--surface);
+  color: var(--text);
 }
 .curriculum-header {
   display: flex;

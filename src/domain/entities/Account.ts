@@ -1,3 +1,5 @@
+import { StudentStatusStrategyFactory } from '../strategies/IStudentStatusStrategy';
+
 export class Account {
     id: number;
     username: string;
@@ -20,5 +22,13 @@ export class Account {
         this.role = role;
         this.id_card = id_card;
         this.status = status;
+    }
+
+    getMaxAllowedCredits(): number {
+        return StudentStatusStrategyFactory.getStrategy(this.status).getMaxAllowedCredits();
+    }
+
+    getRegistrationStatusNote(): string {
+        return StudentStatusStrategyFactory.getStrategy(this.status).getRegistrationStatusNote();
     }
 }

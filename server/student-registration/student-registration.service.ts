@@ -183,9 +183,10 @@ async function getCurriculumRows(studentId: number) {
           course_id,
           CASE
             WHEN SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) > 0 THEN 'completed'
-            WHEN SUM(CASE WHEN COALESCE(status, 'registered') = 'registered' THEN 1 ELSE 0 END) > 0 THEN 'registered'
+            WHEN SUM(CASE WHEN COALESCE(status, 'registered') IN ('registered', 're_registered') THEN 1 ELSE 0 END) > 0 THEN 'registered'
             ELSE NULL
-          END as registrationStatus
+          END as registrationStatus,
+          (SELECT COALESCE(status, 'registered') FROM student_courses sc2 WHERE sc2.course_id = student_courses.course_id AND sc2.student_id = student_courses.student_id ORDER BY id DESC LIMIT 1) as latestStatus
         FROM student_courses
         WHERE student_id = ?
         GROUP BY course_id
@@ -202,7 +203,8 @@ async function getCurriculumRows(studentId: number) {
         pre.course_name as prerequisiteName,
         par.course_code as parallelCode,
         par.course_name as parallelName,
-        sc.registrationStatus
+        sc.registrationStatus,
+        sc.latestStatus
       FROM program_course pc
       JOIN courses c ON c.id = pc.course_id
       LEFT JOIN courses pre ON pre.id = pc.prerequisite_course_id
@@ -216,7 +218,7 @@ async function getCurriculumRows(studentId: number) {
 
   const completedCourseIds = await getCompletedCourseIds(studentId);
 
-  return rows.map(row => {
+  const courses = rows.map(row => {
     const hasMissingPrerequisite =
       row.prerequisiteCourseId && !completedCourseIds.has(row.prerequisiteCourseId);
     const status = row.registrationStatus === 'completed'
@@ -230,17 +232,31 @@ async function getCurriculumRows(studentId: number) {
 
     return {
       ...row,
+      latestStatus: row.latestStatus,
       status,
       statusLabel: getCourseStatusLabel(status),
       hasStudied,
       studyStatusLabel: hasStudied ? 'Đã học' : 'Chưa học',
       canRegister: status === 'available',
       blockingReason: hasMissingPrerequisite
-        ? `Thiếu học phần tiên quyết ${row.prerequisiteCode}`
+        ? `Thiếu học phần tiên quyết ${row.prerequisiteCode}-${row.prerequisiteName} chưa hoàn thành`
         : null,
     };
   });
+
+  const courseMap = new Map(courses.map(c => [c.courseId, c]));
+  courses.forEach(c => {
+    if (c.parallelCourseId) {
+      const parCourse = courseMap.get(c.parallelCourseId);
+      c.parallelCourseRawStatus = parCourse ? parCourse.latestStatus : null;
+    } else {
+      c.parallelCourseRawStatus = null;
+    }
+  });
+
+  return courses;
 }
+
 
 export async function getCurriculum(studentId: number) {
   const profile = await getStudentProfile(studentId);
@@ -301,82 +317,96 @@ export async function registerCourse(
     throw new Error('Học phần không tồn tại.');
   }
 
-  const curriculumCourse = (await getCurriculumRows(studentId)).find(
-    item => item.courseId === course.id
-  );
+  const curriculumCourses = await getCurriculumRows(studentId);
+  const courseMap = new Map(curriculumCourses.map(c => [c.courseId, c]));
 
-  if (!curriculumCourse) {
-    throw new Error('Học phần không thuộc chương trình đào tạo của sinh viên.');
+  const collectedToRegister = new Map<number, any>();
+  const autoAddedNames: string[] = [];
+
+  async function collectAsync(targetCourseId: number, isAutoAdd: boolean, depth = 0) {
+    if (depth > 10) throw new Error('Phát hiện vòng lặp đệ quy học phần song hành.');
+    if (collectedToRegister.has(targetCourseId)) return;
+
+    const curriculumCourse = courseMap.get(targetCourseId);
+    if (!curriculumCourse) {
+      if (!isAutoAdd) throw new Error('Học phần không thuộc chương trình đào tạo của sinh viên.');
+      return;
+    }
+
+    if (curriculumCourse.blockingReason) {
+      throw new Error(`Học phần tiên quyết ${curriculumCourse.prerequisiteCode}-${curriculumCourse.prerequisiteName} chưa hoàn thành`);
+    }
+
+    const existingInSemester = await dbGet<{ id: number }>(
+      `SELECT id FROM student_courses WHERE student_id = ? AND course_id = ? AND semester = ? LIMIT 1`,
+      [studentId, targetCourseId, activePeriod.semester]
+    );
+
+    if (existingInSemester) {
+      if (!isAutoAdd) throw new Error('Bạn đã đăng ký thành công trước đó');
+      return; 
+    }
+
+    collectedToRegister.set(targetCourseId, curriculumCourse);
+    if (isAutoAdd) {
+      autoAddedNames.push(`${curriculumCourse.code}-${curriculumCourse.name}`);
+    }
+
+    if (curriculumCourse.parallelCourseId) {
+      const parStatus = curriculumCourse.parallelCourseRawStatus;
+      if (parStatus !== 'completed' && parStatus !== 're_registered') {
+        await collectAsync(curriculumCourse.parallelCourseId, true, depth + 1);
+      }
+    }
   }
 
+  await collectAsync(course.id, false);
 
+  let primaryRegisteredCourse = null;
+  let primaryMessage = 'Đăng ký thành công';
 
-  const existingInSemester = await dbGet<{ id: number }>(
-    `
-      SELECT id
-      FROM student_courses
-      WHERE student_id = ?
-        AND course_id = ?
-        AND semester = ?
-      LIMIT 1
-    `,
-    [studentId, course.id, activePeriod.semester]
-  );
+  for (const [cId, cCourse] of collectedToRegister) {
+    const existingRegisteredOtherSemester = await dbGet<{ id: number }>(
+      `SELECT id FROM student_courses WHERE student_id = ? AND course_id = ? AND status = 'registered' LIMIT 1`,
+      [studentId, cId]
+    );
 
-  if (existingInSemester) {
-    throw new Error('Bạn đã đăng ký thành công trước đó');
+    const existingCompleted = await dbGet<{ id: number }>(
+      `SELECT id FROM student_courses WHERE student_id = ? AND course_id = ? AND status = 'completed' LIMIT 1`,
+      [studentId, cId]
+    );
+
+    let newStatus = 'registered';
+    let msg = 'Đăng ký thành công';
+
+    if (existingCompleted) {
+      newStatus = 're_registered';
+      msg = 'Đăng ký thành công. Học phần này đã từng được học, bạn đang đăng ký học lại.';
+    } else if (existingRegisteredOtherSemester) {
+      newStatus = 'registered';
+      msg = 'Đăng ký thành công. Học phần này đã từng được đăng ký nhưng chưa học xong.';
+    }
+
+    const result = await dbRun(
+      `INSERT INTO student_courses (student_id, course_id, semester, status) VALUES (?, ?, ?, ?)`,
+      [studentId, cId, activePeriod.semester, newStatus]
+    );
+
+    if (cId === course.id) {
+      primaryRegisteredCourse = (await getRegisteredCourses(studentId)).find(
+        (item: any) => item.id === result.lastID
+      );
+      primaryMessage = msg;
+    }
   }
 
-  const existingRegisteredOtherSemester = await dbGet<{ id: number }>(
-    `
-      SELECT id
-      FROM student_courses
-      WHERE student_id = ?
-        AND course_id = ?
-        AND status = 'registered'
-      LIMIT 1
-    `,
-    [studentId, course.id]
-  );
-
-  const existingCompleted = await dbGet<{ id: number }>(
-    `
-      SELECT id
-      FROM student_courses
-      WHERE student_id = ?
-        AND course_id = ?
-        AND status = 'completed'
-      LIMIT 1
-    `,
-    [studentId, course.id]
-  );
-
-  let newStatus = 'registered';
-  let message = 'Đăng ký thành công';
-
-  if (existingCompleted) {
-    newStatus = 're_registered';
-    message = 'Đăng ký thành công. Học phần này đã từng được học, bạn đang đăng ký học lại.';
-  } else if (existingRegisteredOtherSemester) {
-    newStatus = 'registered';
-    message = 'Đăng ký thành công. Học phần này đã từng được đăng ký nhưng chưa học xong.';
+  if (autoAddedNames.length > 0) {
+    primaryMessage = `Đã tự động thêm học phần song hành ${autoAddedNames.join(', ')}`;
   }
-
-  const result = await dbRun(
-    `
-      INSERT INTO student_courses (student_id, course_id, semester, status)
-      VALUES (?, ?, ?, ?)
-    `,
-    [studentId, course.id, activePeriod.semester, newStatus]
-  );
-
-  const registeredCourse = (await getRegisteredCourses(studentId)).find(
-    (item: any) => item.id === result.lastID
-  );
 
   return {
-    course: registeredCourse,
-    message
+    course: primaryRegisteredCourse,
+    message: primaryMessage
   };
 }
 
@@ -426,7 +456,7 @@ export async function searchClassSuggestions(
       JOIN student_courses sc
         ON sc.course_id = cc.course_id
         AND sc.student_id = ?
-        AND COALESCE(sc.status, 'registered') = 'registered'
+        AND COALESCE(sc.status, 'registered') IN ('registered', 're_registered')
       WHERE ? = '' OR lower(c.course_code) LIKE ? OR lower(c.course_name) LIKE ?
       ORDER BY c.course_code ASC
       LIMIT ?
@@ -500,7 +530,7 @@ export async function getClassesForCourse(
       JOIN student_courses sc
         ON sc.course_id = cc.course_id
         AND sc.student_id = ?
-        AND COALESCE(sc.status, 'registered') = 'registered'
+        AND COALESCE(sc.status, 'registered') IN ('registered', 're_registered')
       WHERE cc.course_id = ?
       ORDER BY cc.id ASC
     `,

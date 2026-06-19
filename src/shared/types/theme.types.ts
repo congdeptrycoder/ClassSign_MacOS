@@ -27,6 +27,15 @@ export interface ThemeColors {
     loginGradient: [string, string];
     themeToggleBackground: string;
     themeToggleText: string;
+    statusSuccess: string;
+    statusDanger: string;
+    statusWarning: string;
+    statusInfo: string;
+    btnDetail: string;
+    btnEdit: string;
+    btnDelete: string;
+    btnCancel: string;
+    warningText: string;
 }
 
 export interface ThemeContextValue {

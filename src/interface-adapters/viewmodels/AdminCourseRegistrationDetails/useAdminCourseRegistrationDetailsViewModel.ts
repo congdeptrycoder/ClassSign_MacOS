@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CourseRegistrationStat } from '../../../domain/entities/CourseRegistrationStat';
-import { AdminRepositoryImpl } from '../../../infrastructure/repositories/AdminRepositoryImpl';
-import { GetCourseRegistrationStatsUseCase } from '../../../application/use-cases/GetCourseRegistrationStatsUseCase';
-import { AdminController } from '../../controllers/AdminController';
-import { AdminClassRepositoryImpl } from '../../../infrastructure/repositories/AdminClassRepositoryImpl';
-import { GetClassesByCourseUseCase } from '../../../application/use-cases/GetClassesByCourseUseCase';
-import { DeleteClassCourseUseCase } from '../../../application/use-cases/DeleteClassCourseUseCase';
-import { CreateClassCourseUseCase } from '../../../application/use-cases/CreateClassCourseUseCase';
-import { AdminClassController } from '../../controllers/AdminClassController';
+import { adminController, adminClassController } from '../../../di/admin.di';
 
 export const useAdminCourseRegistrationDetailsViewModel = (semester: number | null) => {
     const [stats, setStats] = useState<CourseRegistrationStat[]>([]);
@@ -23,13 +16,7 @@ export const useAdminCourseRegistrationDetailsViewModel = (semester: number | nu
     const [courseClasses, setCourseClasses] = useState<Record<number, any[]>>({});
     const [loadingClasses, setLoadingClasses] = useState(false);
 
-    const getAdminClassController = () => {
-        const repo = new AdminClassRepositoryImpl();
-        const getUseCase = new GetClassesByCourseUseCase(repo);
-        const deleteUseCase = new DeleteClassCourseUseCase(repo);
-        const createUseCase = new CreateClassCourseUseCase(repo); // dummy for constructor
-        return new AdminClassController(createUseCase, getUseCase, deleteUseCase);
-    };
+
 
     useEffect(() => {
         if (!semester) return;
@@ -38,11 +25,7 @@ export const useAdminCourseRegistrationDetailsViewModel = (semester: number | nu
             setLoading(true);
             setError(null);
             try {
-                const adminRepo = new AdminRepositoryImpl();
-                const useCase = new GetCourseRegistrationStatsUseCase(adminRepo);
-                const controller = new AdminController(useCase);
-
-                const data = await controller.getCourseRegistrationStats(semester);
+                const data = await adminController.getCourseRegistrationStats(semester);
                 setStats(data);
             } catch (err: any) {
                 setError(err.message || 'Có lỗi xảy ra khi tải dữ liệu thống kê');
@@ -73,8 +56,7 @@ export const useAdminCourseRegistrationDetailsViewModel = (semester: number | nu
         if (!courseClasses[courseId]) {
             setLoadingClasses(true);
             try {
-                const controller = getAdminClassController();
-                const classes = await controller.getClassesByCourse(sem, courseId);
+                const classes = await adminClassController.getClassesByCourse(sem, courseId);
                 setCourseClasses(prev => ({ ...prev, [courseId]: classes }));
             } catch (err: any) {
                 window.alert('Lỗi khi tải danh sách lớp: ' + (err.message || ''));
@@ -87,12 +69,11 @@ export const useAdminCourseRegistrationDetailsViewModel = (semester: number | nu
     const handleDeleteClass = async (classId: number, courseId: number, sem: number) => {
         if (window.confirm('Bạn có chắc chắn muốn xoá lớp học này?')) {
             try {
-                const controller = getAdminClassController();
-                await controller.deleteClassCourse(classId);
+                await adminClassController.deleteClassCourse(classId);
                 window.alert('Xoá lớp thành công!');
                 // Reload classes
                 setLoadingClasses(true);
-                const classes = await controller.getClassesByCourse(sem, courseId);
+                const classes = await adminClassController.getClassesByCourse(sem, courseId);
                 setCourseClasses(prev => ({ ...prev, [courseId]: classes }));
                 
                 // Optionally reload stats if you want, but this is fine.

@@ -73,9 +73,9 @@
 }
 
 .warning-banner {
-  background: #fff3cd;
-  border: 1px solid #ffeeba;
-  color: #856404;
+  background: transparent;
+  border: 1px solid var(--statusWarning);
+  color: var(--statusWarning);
   padding: 12px;
   border-radius: 8px;
   font-weight: 700;
@@ -195,12 +195,12 @@
 }
 
 .delete-btn {
-  background-color: #dc3545;
+  background-color: var(--btnDelete);
   color: white;
 }
 
 .detail-btn {
-  background-color: #2196F3;
+  background-color: var(--btnDetail);
   color: white;
   padding: 6px 12px;
   font-size: 12px;
@@ -211,8 +211,8 @@
 }
 
 .edit-btn-yellow {
-  background-color: #FFC107;
-  color: black;
+  background-color: var(--btnEdit);
+  color: var(--buttonSecondaryText);
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;

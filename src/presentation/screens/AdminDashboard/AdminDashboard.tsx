@@ -64,6 +64,11 @@ export const AdminDashboard = () => {
         handleDeleteRegistrationPeriod,
         selectedClassSemesterId,
         setSelectedClassSemesterId,
+        isCreateSemesterModalOpen,
+        setCreateSemesterModalOpen,
+        newSemesterCode,
+        setNewSemesterCode,
+        handleCreateSemester,
     } = useAdminDashboardViewModel(onNavigateToEdit, onLogout);
 
     const { isDark, toggleTheme } = useTheme();
@@ -100,7 +105,10 @@ export const AdminDashboard = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h3 style={{ margin: 0 }}>Quản lý Giai đoạn đăng ký</h3>
                         {!isEditingPeriod && (
-                            <button className="primary-btn" onClick={() => handleEditRegistrationPeriod()}>Thêm đợt đăng ký mới</button>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button className="primary-btn" onClick={() => setCreateSemesterModalOpen(true)} style={{ backgroundColor: '#28a745' }}>Thêm kỳ mới</button>
+                                <button className="primary-btn" onClick={() => handleEditRegistrationPeriod()}>Thêm đợt đăng ký mới</button>
+                            </div>
                         )}
                     </div>
 
@@ -202,10 +210,7 @@ export const AdminDashboard = () => {
                         </select>
                     </div>
 
-                    <div className="upload-section">
-                        <button className="primary-btn" onClick={handleUpload}>Upload file</button>
-                        <span className="hint-text" style={{ marginLeft: '10px' }}>* chỉ up file .xlsx</span>
-                    </div>
+
                 </section>
 
                 <section className="table-wrapper card">
@@ -261,7 +266,24 @@ export const AdminDashboard = () => {
                 </section>
             </main>
 
-
+            {isCreateSemesterModalOpen && (
+                <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                    <div className="card" style={{ padding: '20px', minWidth: '300px', backgroundColor: '#fff', borderRadius: '8px' }}>
+                        <h3 style={{ marginTop: 0, textAlign: 'center' }}>Thêm Kỳ Mới</h3>
+                        <input
+                            type="text"
+                            placeholder="Nhập mã kỳ (VD: 20261)"
+                            value={newSemesterCode}
+                            onChange={e => setNewSemesterCode(e.target.value)}
+                            style={{ width: '100%', padding: '10px', marginBottom: '20px', boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: '4px' }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button className="delete-btn" onClick={() => setCreateSemesterModalOpen(false)}>Hủy</button>
+                            <button className="primary-btn" onClick={handleCreateSemester} style={{ backgroundColor: '#28a745' }}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

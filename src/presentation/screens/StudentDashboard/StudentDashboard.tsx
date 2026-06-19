@@ -1,6 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStudentDashboardViewModel } from '../../../interface-adapters/viewmodels/StudentDashboard/useStudentDashboardViewModel';
+import { useRegistrationPeriodViewModel } from '../../../interface-adapters/viewmodels/StudentDashboard/useRegistrationPeriodViewModel';
+import { useTimetableViewModel } from '../../../interface-adapters/viewmodels/StudentDashboard/useTimetableViewModel';
+import { useCourseRegistrationViewModel } from '../../../interface-adapters/viewmodels/StudentDashboard/useCourseRegistrationViewModel';
+import { useClassRegistrationViewModel } from '../../../interface-adapters/viewmodels/StudentDashboard/useClassRegistrationViewModel';
 import { useTheme } from '../../components/ThemeContext';
 import {
     clearCurrentAccount,
@@ -18,15 +21,29 @@ const afternoonPeriods = [7, 8, 9, 10, 11, 12];
 export const StudentDashboard = () => {
     const navigate = useNavigate();
     const account = getCurrentAccount();
+    const studentId = account?.id ?? 1;
+
     const onLogout = () => {
         clearCurrentAccount();
         navigate('/login');
     };
-    const onViewCurriculum = () => navigate('/student/curriculum');
+    const handleViewCurriculum = () => navigate('/student/curriculum');
+
+    const [isUserInfoVisible, setIsUserInfoVisible] = React.useState(false);
+    const toggleUserInfo = () => setIsUserInfoVisible(prev => !prev);
+    const handleLogout = () => {
+        setIsUserInfoVisible(false);
+        onLogout();
+    };
+
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [alarmMessage, setAlarmMessage] = React.useState<string | null>(null);
+
+    const { currentRegPeriodType, activeSemesterId, activeSemesterName } = useRegistrationPeriodViewModel();
+
+    const { registeredClasses, timeGridEvents, reloadTimetable } = useTimetableViewModel(studentId);
 
     const {
-        isUserInfoVisible,
-        toggleUserInfo,
         searchQuery,
         handleSearchQueryChange,
         isSuggestionVisible,
@@ -36,30 +53,38 @@ export const StudentDashboard = () => {
         searchError,
         handleSelectSuggestion,
         handleRegisterSubject,
-        handleViewCurriculum,
-        handleLogout,
         registeredSubjects,
-        timeGridEvents,
-        currentRegPeriodType,
-        isSubmitting,
-        alarmMessage,
-        setAlarmMessage,
+        totalCredits,
+        maxCredits,
+        statusNote,
         courseIdToDelete,
         promptDeleteCourse,
         cancelDeleteCourse,
-        confirmDeleteCourse,
+        confirmDeleteCourse
+    } = useCourseRegistrationViewModel(
+        studentId,
+        account ?? null,
         activeSemesterId,
-        activeSemesterName,
-        totalCredits,
-        statusNote,
+        currentRegPeriodType,
+        setAlarmMessage,
+        setIsSubmitting
+    );
+
+    const {
         expandedCourseIds,
         courseClassesData,
         isLoadingClasses,
         toggleCourseExpansion,
         handleRegisterClassSection,
         handleCancelClassSection,
-        registeredClasses,
-    } = useStudentDashboardViewModel(onLogout, account ?? null, onViewCurriculum);
+        handleRegisterClassFromSearch
+    } = useClassRegistrationViewModel(
+        studentId,
+        currentRegPeriodType,
+        setAlarmMessage,
+        setIsSubmitting,
+        reloadTimetable
+    );
 
     const { isDark, toggleTheme } = useTheme();
     const studentLabel = `${account?.name ?? 'Sinh viên'} - ${account?.id_card ?? account?.username ?? account?.id ?? ''}`;
@@ -187,16 +212,34 @@ export const StudentDashboard = () => {
                                                     <span className="suggestion-code">{sub.code}</span>
                                                     <span className="suggestion-name">{sub.name}</span>
                                                     <span className="suggestion-credits">{sub.credits} TC</span>
-                                                    {'statusLabel' in sub && (
-                                                        <span className={`suggestion-status status-${sub.status}`}>
-                                                            {sub.statusLabel}
-                                                        </span>
-                                                    )}
-                                                    {'occupiedSlots' in sub && (
-                                                        <span className="suggestion-status status-available">
-                                                            Còn {sub.totalSlots - sub.occupiedSlots}/{sub.totalSlots} chỗ
-                                                        </span>
-                                                    )}
+                                                    <div className="suggestion-badges-row">
+                                                        {'statusLabel' in sub && (
+                                                            <span className={`suggestion-status status-${sub.status}`} style={{ width: 'fit-content' }}>
+                                                                {sub.statusLabel}
+                                                            </span>
+                                                        )}
+                                                        {'prerequisiteCode' in sub && !sub.canRegister && sub.prerequisiteCode && (
+                                                            <span className="suggestion-status" style={{ backgroundColor: '#fee2e2', color: '#ef4444', width: 'fit-content' }}>
+                                                                Cần học {sub.prerequisiteCode}-{sub.prerequisiteName} trước
+                                                            </span>
+                                                        )}
+                                                        {'parallelCode' in sub && sub.parallelCode && (
+                                                            (sub.parallelCourseRawStatus === 'completed' || sub.parallelCourseRawStatus === 're_registered') ? (
+                                                                <span className="suggestion-status status-completed" style={{ width: 'fit-content' }}>
+                                                                    Đã hoàn thành học phần song hành {sub.parallelCode}-{sub.parallelName}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="suggestion-status" style={{ backgroundColor: '#fef9c3', color: '#eab308', width: 'fit-content' }}>
+                                                                    Học phần song hành {sub.parallelCode}-{sub.parallelName}
+                                                                </span>
+                                                            )
+                                                        )}
+                                                        {'occupiedSlots' in sub && (
+                                                            <span className="suggestion-status status-available" style={{ width: 'fit-content' }}>
+                                                                Còn {sub.totalSlots - sub.occupiedSlots}/{sub.totalSlots} chỗ
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
@@ -227,8 +270,7 @@ export const StudentDashboard = () => {
                         <table className="info-table">
                             <thead>
                                 <tr>
-                                    <th style={{ width: '40px' }}>DS Lớp</th>
-                                    <th>ID</th>
+                                    {currentRegPeriodType === 'register_class' && <th style={{ width: '40px' }}>DS Lớp</th>}
                                     <th>Mã HP</th>
                                     <th>Tên học phần</th>
                                     <th>TT đăng ký</th>
@@ -240,15 +282,16 @@ export const StudentDashboard = () => {
                                 {displayedSubjects.map((item) => (
                                     <React.Fragment key={item.id}>
                                         <tr className={expandedCourseIds.has(item.courseId) ? 'expanded-row' : ''}>
-                                            <td>
-                                                <button
-                                                    className="expand-btn"
-                                                    onClick={() => toggleCourseExpansion(item.courseId)}
-                                                >
-                                                    {expandedCourseIds.has(item.courseId) ? '▼' : '▶'}
-                                                </button>
-                                            </td>
-                                            <td>{item.id}</td>
+                                            {currentRegPeriodType === 'register_class' && (
+                                                <td>
+                                                    <button
+                                                        className="expand-btn"
+                                                        onClick={() => toggleCourseExpansion(item.courseId)}
+                                                    >
+                                                        {expandedCourseIds.has(item.courseId) ? '▼' : '▶'}
+                                                    </button>
+                                                </td>
+                                            )}
                                             <td><span className="course-code">{item.code}</span></td>
                                             <td>{item.name}</td>
                                             <td>
@@ -271,7 +314,7 @@ export const StudentDashboard = () => {
                                         </tr>
                                         {expandedCourseIds.has(item.courseId) && (
                                             <tr className="sub-table-row">
-                                                <td colSpan={currentRegPeriodType === 'register_program' ? 7 : 6} style={{ padding: 0 }}>
+                                                <td colSpan={5} style={{ padding: 0 }}>
                                                     <div className="sub-table-container" style={{ padding: '16px', background: 'var(--bg-color)', borderBottom: '1px solid var(--border-color)' }}>
                                                         <h4 style={{ margin: '0 0 12px 0' }}>Danh sách lớp học phần</h4>
                                                         {isLoadingClasses[item.courseId] ? (
@@ -364,7 +407,7 @@ export const StudentDashboard = () => {
                                 ))}
                                 {displayedSubjects.length === 0 && (
                                     <tr>
-                                        <td colSpan={currentRegPeriodType === 'register_program' ? 7 : 6} className="empty-table-cell">
+                                        <td colSpan={5} className="empty-table-cell">
                                             Chưa có học phần đăng ký
                                         </td>
                                     </tr>

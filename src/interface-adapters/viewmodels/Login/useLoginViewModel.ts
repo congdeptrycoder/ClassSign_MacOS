@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { AccountRepositoryImpl } from '../../../infrastructure/repositories/AccountRepositoryImpl';
-import { LoginUseCase } from '../../../application/use-cases/LoginUseCase';
-import { LoginController } from '../../controllers/LoginController';
+import { loginController } from '../../../di/auth.di';
 import { Account } from '../../../domain/entities/Account';
 
 export const useLoginViewModel = (onLoginSuccess?: (account: Account) => void) => {
@@ -18,11 +16,7 @@ export const useLoginViewModel = (onLoginSuccess?: (account: Account) => void) =
         setPasswordStatus('default');
         setNotification(null);
 
-        const repository = new AccountRepositoryImpl();
-        const useCase = new LoginUseCase(repository);
-        const controller = new LoginController(useCase);
-
-        const result = await controller.login(currentUsername, password);
+        const result = await loginController.login(currentUsername, password);
 
         if (result.success && result.account) {
             setUsernameStatus('success');

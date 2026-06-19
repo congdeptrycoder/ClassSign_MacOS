@@ -1,5 +1,5 @@
 ## BỐI CẢNH DỰ ÁN 
-- Dự án của tôi là 1 phần mềm đăng ký học tập. Hệ thống có 2 giai đoạn cho student đăng ký: Đăng ký học phần và đăng ký học tập. Đăng ký học phần thì sẽ chỉ cho phép đăng ký những học phần mà chương trình đào tạo của học sinh đó đang học có. Đăng ký lớp học thì sẽ làm 2 giai đoạn nhỏ: Giai đoạn 1 chỉ cho đăng ký lớp học của những học phần đã đăng ký trước, giai đoạn 2 cho đăng ký lớp học của tất cả các học phần nếu còn chỗ. Admin có quyền tạo các giai đoạn, CRUD danh sách lớp học, theo dõi sinh viên đăng ký học phần, đăng ký lớp học
+- Dự án của tôi là 1 phần mềm đăng ký học tập. Hệ thống có 2 đợt cho student đăng ký: Đợt đăng ký học phần và Đợt đăng ký lớp học. Đăng ký học phần thì sẽ chỉ cho phép đăng ký những học phần mà chương trình đào tạo của học sinh đó đang học có. Đăng ký lớp học cũng sẽ chỉ có 1 giai đoạn duy nhất: chỉ được đăng ký lớp học của những học phần đã đăng ký trước. Admin có quyền tạo các đợt đăng ký, CRUD danh sách lớp học, theo dõi sinh viên đăng ký học phần, đăng ký lớp học
 - Tech Stack: Electron, React, TypeScript, SQLite (Database)
 - Thiết kế theo Clean Architecture (đọc file clean_architecture.md) và Model-View-ViewModel
 - Sử dụng đủ 5 tiêu chí SOLID và 3 design pattern: Strategy, Observer, Repository ( Khi phát hiện có code lỗi design pattern hoặc SOLID thì sửa ngay và báo cáo lại )

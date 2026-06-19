@@ -1,14 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ManageStudentRegistration } from '../../../application/use-cases/ManageStudentRegistration';
 import {
   Curriculum,
   CurriculumCourse,
 } from '../../../domain/entities/StudentRegistration';
-import { StudentRegistrationRepositoryImpl } from '../../../infrastructure/repositories/StudentRegistrationRepositoryImpl';
-
-const registrationUseCase = new ManageStudentRegistration(
-  new StudentRegistrationRepositoryImpl()
-);
+import { curriculumController, courseRegistrationController } from '../../../di/student.di';
 
 export const useCurriculumViewModel = (studentId: number) => {
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
@@ -21,7 +16,7 @@ export const useCurriculumViewModel = (studentId: number) => {
     try {
       setIsLoading(true);
       setError(null);
-      setCurriculum(await registrationUseCase.getCurriculum(studentId));
+      setCurriculum(await curriculumController.getCurriculum(studentId));
     } catch (err: any) {
       setError(err.message || 'Không thể tải chương trình đào tạo.');
     } finally {
@@ -36,7 +31,7 @@ export const useCurriculumViewModel = (studentId: number) => {
   const handleRegisterCourse = async (course: CurriculumCourse) => {
     try {
       setRegisteringCourseId(course.courseId);
-      await registrationUseCase.registerCourse(studentId, course.courseId);
+      await courseRegistrationController.registerCourse(studentId, course.courseId);
       setAlarmMessage(`Đã đăng ký học phần ${course.code}.`);
       await loadCurriculum();
     } catch (err: any) {

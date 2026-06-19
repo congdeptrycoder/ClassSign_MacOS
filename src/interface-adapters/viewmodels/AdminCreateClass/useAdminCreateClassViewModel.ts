@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { AdminClassRepositoryImpl } from '../../../infrastructure/repositories/AdminClassRepositoryImpl';
-import { CreateClassCourseUseCase } from '../../../application/use-cases/CreateClassCourseUseCase';
-import { UpdateClassCourseUseCase } from '../../../application/use-cases/UpdateClassCourseUseCase';
-import { AdminClassController } from '../../controllers/AdminClassController';
+import { adminClassController } from '../../../di/admin.di';
+import { SaveClassCourseInputDTO } from '../../../application/dto/AdminClassDTO';
 
 export interface AdminCreateClassState {
     id?: number;
@@ -60,7 +58,7 @@ export const useAdminCreateClassViewModel = (
             return;
         }
 
-        const payload = {
+        const payload: SaveClassCourseInputDTO = {
             ...formData,
             ma_lop_kem: formData.ma_lop_kem || 'NULL',
             ghi_chu: formData.ghi_chu || 'NULL',
@@ -74,19 +72,12 @@ export const useAdminCreateClassViewModel = (
                     window.alert('Lỗi: Không tìm thấy ID lớp học để cập nhật');
                     return;
                 }
-                const repository = new AdminClassRepositoryImpl();
-                const updateUseCase = new UpdateClassCourseUseCase(repository);
-                const controller = new AdminClassController(new CreateClassCourseUseCase(repository), undefined, undefined, undefined, updateUseCase);
                 
-                await controller.updateClassCourse(formData.id, payload);
+                await adminClassController.updateClassCourse(formData.id, payload);
                 window.alert('Thành công: Đã cập nhật thông tin lớp học!');
                 onNavigateBack();
             } else {
-                const repository = new AdminClassRepositoryImpl();
-                const useCase = new CreateClassCourseUseCase(repository);
-                const controller = new AdminClassController(useCase);
-                
-                await controller.createClassCourse(payload);
+                await adminClassController.createClassCourse(payload);
                 window.alert('Thành công: Đã lưu lớp học mới!');
                 onNavigateBack();
             }

@@ -160,7 +160,7 @@ export const AdminCourseRegistrationDetails = () => {
                                                 <td>{stat.so_luong_dk_toi_da}</td>
                                                 <td>
                                                     <span style={{
-                                                        color: trangThai === "Đã đáp ứng đủ" ? 'green' : '#ff4d4f',
+                                                        color: trangThai === "Đã đáp ứng đủ" ? 'var(--statusSuccess)' : 'var(--statusDanger)',
                                                         fontWeight: 'bold'
                                                     }}>
                                                         {trangThai}
@@ -181,7 +181,7 @@ export const AdminCourseRegistrationDetails = () => {
                                                 </td>
                                             </tr>
                                             {expandedCourseId === stat.course_id && (
-                                                <tr key={`expanded-${stat.course_id}`} style={{ backgroundColor: '#f9f9f9' }}>
+                                                <tr key={`expanded-${stat.course_id}`} style={{ backgroundColor: 'var(--surface)' }}>
                                                     <td colSpan={8} style={{ padding: '20px' }}>
                                                         {loadingClasses && !courseClasses[stat.course_id] ? (
                                                             <p>Đang tải danh sách lớp...</p>

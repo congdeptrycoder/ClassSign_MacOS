@@ -27,6 +27,7 @@ export interface CurriculumCourse {
   prerequisiteName?: string | null;
   parallelCode?: string | null;
   parallelName?: string | null;
+  parallelCourseRawStatus?: string | null;
   status: CourseRegistrationStatus;
   statusLabel: string;
   hasStudied: boolean;

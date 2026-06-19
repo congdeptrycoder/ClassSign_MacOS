@@ -14874,6 +14874,32 @@ class Account {
     this.id_card = id_card;
     this.status = status;
   }
+  getMaxAllowedCredits() {
+    switch (this.status) {
+      case "study_cc1":
+        return 20;
+      case "study_cc2":
+        return 16;
+      case "study_cc3":
+        return 12;
+      case "study":
+      default:
+        return 24;
+    }
+  }
+  getRegistrationStatusNote() {
+    switch (this.status) {
+      case "study_cc1":
+        return "Bạn đang bị cảnh cáo mức 1. Chỉ được đăng ký tối đa 20 TC";
+      case "study_cc2":
+        return "Bạn đang bị cảnh cáo mức 2. Chỉ được đăng ký tối đa 16 TC";
+      case "study_cc3":
+        return "Bạn đang bị cảnh cáo mức 3. Chỉ được đăng ký tối đa 12 TC";
+      case "study":
+      default:
+        return "Bạn được đăng ký tối đa 24 TC";
+    }
+  }
 }
 const SERVER_BASE_URL = "http://localhost:3002";
 async function request(endpoint, options = {}) {
@@ -14936,8 +14962,8 @@ class AccountRepositoryImpl {
 }
 class LoginUseCase {
   accountRepository;
-  constructor(accountRepository) {
-    this.accountRepository = accountRepository;
+  constructor(accountRepository2) {
+    this.accountRepository = accountRepository2;
   }
   async execute(username, password) {
     if (!username || !password) {
@@ -14952,8 +14978,8 @@ class LoginUseCase {
 }
 class LoginController {
   loginUseCase;
-  constructor(loginUseCase) {
-    this.loginUseCase = loginUseCase;
+  constructor(loginUseCase2) {
+    this.loginUseCase = loginUseCase2;
   }
   async login(username, password) {
     try {
@@ -14970,6 +14996,9 @@ class LoginController {
     }
   }
 }
+const accountRepository = new AccountRepositoryImpl();
+const loginUseCase = new LoginUseCase(accountRepository);
+const loginController = new LoginController(loginUseCase);
 const useLoginViewModel = (onLoginSuccess) => {
   const [password, setPassword] = reactExports.useState("");
   const [usernameStatus, setUsernameStatus] = reactExports.useState("default");
@@ -14981,10 +15010,7 @@ const useLoginViewModel = (onLoginSuccess) => {
     setUsernameStatus("default");
     setPasswordStatus("default");
     setNotification(null);
-    const repository = new AccountRepositoryImpl();
-    const useCase = new LoginUseCase(repository);
-    const controller = new LoginController(useCase);
-    const result = await controller.login(currentUsername, password);
+    const result = await loginController.login(currentUsername, password);
     if (result.success && result.account) {
       setUsernameStatus("success");
       setTimeout(() => {
@@ -15036,7 +15062,16 @@ const lightColors = {
   modalBackground: "#FFFFFF",
   loginGradient: ["#8B0000", "#FF4D4D"],
   themeToggleBackground: "rgba(255,255,255,0.25)",
-  themeToggleText: "#FFFFFF"
+  themeToggleText: "#FFFFFF",
+  statusSuccess: "#4caf50",
+  statusDanger: "#f44336",
+  statusWarning: "#ff9800",
+  statusInfo: "#2196F3",
+  btnDetail: "#337ab7",
+  btnEdit: "#f0ad4e",
+  btnDelete: "#d9534f",
+  btnCancel: "#aaaaaa",
+  warningText: "#83b13e"
 };
 const darkColors = {
   background: "#1a1a2e",
@@ -15064,7 +15099,16 @@ const darkColors = {
   modalBackground: "#1a2a4a",
   loginGradient: ["#1a1a2e", "#0f3460"],
   themeToggleBackground: "rgba(255,255,255,0.15)",
-  themeToggleText: "#FFD700"
+  themeToggleText: "#FFD700",
+  statusSuccess: "#81c784",
+  statusDanger: "#e57373",
+  statusWarning: "#ffb74d",
+  statusInfo: "#64b5f6",
+  btnDetail: "#5bc0de",
+  btnEdit: "#f0ad4e",
+  btnDelete: "#d9534f",
+  btnCancel: "#777777",
+  warningText: "#aed581"
 };
 const ThemeContext = reactExports.createContext({
   theme: "light",
@@ -15217,6 +15261,53 @@ const filterTableByColumn = (data, filters) => {
     });
   });
 };
+class AdminClassRepositoryImpl {
+  async createClassCourse(data) {
+    await apiClient.post("/admin/classes", data);
+  }
+  async getClassesByCourse(semester, courseId) {
+    return await apiClient.get(`/admin/classes/${semester}/${courseId}`);
+  }
+  async getAllClassesBySemester(semester) {
+    return await apiClient.get(`/admin/classes/semester/${semester}`);
+  }
+  async updateClassCourse(id, data) {
+    await apiClient.put(`/admin/classes/${id}`, data);
+  }
+  async deleteClassCourse(classId) {
+    await apiClient.delete(`/admin/classes/${classId}`);
+  }
+}
+class CourseRegistrationStat {
+  constructor(course_id, ma_hp, ten_hp, truong_khoa, so_luong_dang_ky, so_luong_lop, so_luong_dk_toi_da) {
+    this.course_id = course_id;
+    this.ma_hp = ma_hp;
+    this.ten_hp = ten_hp;
+    this.truong_khoa = truong_khoa;
+    this.so_luong_dang_ky = so_luong_dang_ky;
+    this.so_luong_lop = so_luong_lop;
+    this.so_luong_dk_toi_da = so_luong_dk_toi_da;
+  }
+}
+class AdminRepositoryImpl {
+  async getCourseRegistrationStats(semester) {
+    try {
+      const data = await apiClient.get(`/admin/course-registration-stats?semester=${semester}`);
+      return data.map((item) => new CourseRegistrationStat(
+        item.course_id,
+        item.ma_hp,
+        item.ten_hp,
+        item.truong_khoa,
+        item.so_luong_dang_ky,
+        item.so_luong_lop,
+        item.so_luong_dk_toi_da
+      ));
+    } catch (error) {
+      console.error("AdminRepositoryImpl getCourseRegistrationStats error:", error);
+      throw new Error(error.message || "Lỗi kết nối tới máy chủ.");
+    }
+  }
+}
 class Semester {
   constructor(id, semester, is_active) {
     this.id = id;
@@ -15234,6 +15325,14 @@ class SemesterRepositoryImpl {
     } catch (error) {
       console.error("SemesterRepositoryImpl getAll error:", error);
       throw new Error(error.message || "Lỗi kết nối tới máy chủ.");
+    }
+  }
+  async createSemester(semesterCode) {
+    try {
+      await apiClient.post("/semesters", { semester: semesterCode });
+    } catch (error) {
+      console.error("SemesterRepositoryImpl createSemester error:", error);
+      throw new Error(error.response?.data?.message || "Lỗi thêm học kỳ.");
     }
   }
 }
@@ -15298,8 +15397,8 @@ class AcademicPeriodRepositoryImpl {
   }
 }
 class GetAllSemestersUseCase {
-  constructor(semesterRepository) {
-    this.semesterRepository = semesterRepository;
+  constructor(semesterRepository2) {
+    this.semesterRepository = semesterRepository2;
   }
   async execute() {
     const semesters = await this.semesterRepository.getAll();
@@ -15310,9 +15409,20 @@ class GetAllSemestersUseCase {
     }));
   }
 }
+class CreateSemesterUseCase {
+  constructor(semesterRepository2) {
+    this.semesterRepository = semesterRepository2;
+  }
+  async execute(semesterCode) {
+    if (!semesterCode || semesterCode.trim() === "") {
+      throw new Error("Mã kỳ không được để trống.");
+    }
+    await this.semesterRepository.createSemester(semesterCode.trim());
+  }
+}
 class GetAllAcademicPeriodsUseCase {
-  constructor(academicPeriodRepository) {
-    this.academicPeriodRepository = academicPeriodRepository;
+  constructor(academicPeriodRepository2) {
+    this.academicPeriodRepository = academicPeriodRepository2;
   }
   async execute() {
     const periods = await this.academicPeriodRepository.getAll();
@@ -15328,8 +15438,8 @@ class GetAllAcademicPeriodsUseCase {
   }
 }
 class SaveAcademicPeriodUseCase {
-  constructor(academicPeriodRepository) {
-    this.academicPeriodRepository = academicPeriodRepository;
+  constructor(academicPeriodRepository2) {
+    this.academicPeriodRepository = academicPeriodRepository2;
   }
   async execute(input) {
     return await this.academicPeriodRepository.save(
@@ -15342,16 +15452,67 @@ class SaveAcademicPeriodUseCase {
   }
 }
 class DeleteAcademicPeriodUseCase {
-  constructor(academicPeriodRepository) {
-    this.academicPeriodRepository = academicPeriodRepository;
+  constructor(academicPeriodRepository2) {
+    this.academicPeriodRepository = academicPeriodRepository2;
   }
   async execute(id) {
     await this.academicPeriodRepository.delete(id);
   }
 }
+class CreateClassCourseUseCase {
+  constructor(adminClassRepository2) {
+    this.adminClassRepository = adminClassRepository2;
+  }
+  async execute(data) {
+    await this.adminClassRepository.createClassCourse(data);
+  }
+}
+class GetClassesByCourseUseCase {
+  constructor(adminClassRepository2) {
+    this.adminClassRepository = adminClassRepository2;
+  }
+  async execute(semester, courseId) {
+    return await this.adminClassRepository.getClassesByCourse(semester, courseId);
+  }
+}
+class DeleteClassCourseUseCase {
+  constructor(adminClassRepository2) {
+    this.adminClassRepository = adminClassRepository2;
+  }
+  async execute(classId) {
+    await this.adminClassRepository.deleteClassCourse(classId);
+  }
+}
+class GetAllClassesBySemesterUseCase {
+  constructor(adminClassRepository2) {
+    this.adminClassRepository = adminClassRepository2;
+  }
+  async execute(semester) {
+    return await this.adminClassRepository.getAllClassesBySemester(semester);
+  }
+}
+class UpdateClassCourseUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  async execute(id, data) {
+    if (!id) {
+      throw new Error("Missing class ID for update.");
+    }
+    await this.repository.updateClassCourse(id, data);
+  }
+}
+class GetCourseRegistrationStatsUseCase {
+  constructor(adminRepository2) {
+    this.adminRepository = adminRepository2;
+  }
+  async execute(semester) {
+    return this.adminRepository.getCourseRegistrationStats(semester);
+  }
+}
 class SemesterController {
-  constructor(getAllSemestersUseCase) {
-    this.getAllSemestersUseCase = getAllSemestersUseCase;
+  constructor(getAllSemestersUseCase2) {
+    this.getAllSemestersUseCase = getAllSemestersUseCase2;
   }
   async getAllSemesters() {
     return await this.getAllSemestersUseCase.execute();
@@ -15373,46 +15534,13 @@ class AcademicPeriodController {
     return await this.deleteUseCase.execute(id);
   }
 }
-class AdminClassRepositoryImpl {
-  async createClassCourse(data) {
-    await apiClient.post("/admin/classes", data);
-  }
-  async getClassesByCourse(semester, courseId) {
-    return await apiClient.get(`/admin/classes/${semester}/${courseId}`);
-  }
-  async getAllClassesBySemester(semester) {
-    return await apiClient.get(`/admin/classes/semester/${semester}`);
-  }
-  async updateClassCourse(id, data) {
-    await apiClient.put(`/admin/classes/${id}`, data);
-  }
-  async deleteClassCourse(classId) {
-    await apiClient.delete(`/admin/classes/${classId}`);
-  }
-}
-class GetAllClassesBySemesterUseCase {
-  constructor(adminClassRepository) {
-    this.adminClassRepository = adminClassRepository;
-  }
-  async execute(semester) {
-    return await this.adminClassRepository.getAllClassesBySemester(semester);
-  }
-}
-class DeleteClassCourseUseCase {
-  constructor(adminClassRepository) {
-    this.adminClassRepository = adminClassRepository;
-  }
-  async execute(classId) {
-    await this.adminClassRepository.deleteClassCourse(classId);
-  }
-}
 class AdminClassController {
-  constructor(createClassCourseUseCase, getClassesByCourseUseCase, deleteClassCourseUseCase, getAllClassesBySemesterUseCase, updateClassCourseUseCase) {
-    this.createClassCourseUseCase = createClassCourseUseCase;
-    this.getClassesByCourseUseCase = getClassesByCourseUseCase;
-    this.deleteClassCourseUseCase = deleteClassCourseUseCase;
-    this.getAllClassesBySemesterUseCase = getAllClassesBySemesterUseCase;
-    this.updateClassCourseUseCase = updateClassCourseUseCase;
+  constructor(createClassCourseUseCase2, getClassesByCourseUseCase2, deleteClassCourseUseCase2, getAllClassesBySemesterUseCase2, updateClassCourseUseCase2) {
+    this.createClassCourseUseCase = createClassCourseUseCase2;
+    this.getClassesByCourseUseCase = getClassesByCourseUseCase2;
+    this.deleteClassCourseUseCase = deleteClassCourseUseCase2;
+    this.getAllClassesBySemesterUseCase = getAllClassesBySemesterUseCase2;
+    this.updateClassCourseUseCase = updateClassCourseUseCase2;
   }
   async createClassCourse(data) {
     await this.createClassCourseUseCase.execute(data);
@@ -15434,14 +15562,43 @@ class AdminClassController {
     await this.deleteClassCourseUseCase.execute(classId);
   }
 }
-class CreateClassCourseUseCase {
-  constructor(adminClassRepository) {
-    this.adminClassRepository = adminClassRepository;
+class AdminController {
+  constructor(getCourseRegistrationStatsUseCase2) {
+    this.getCourseRegistrationStatsUseCase = getCourseRegistrationStatsUseCase2;
   }
-  async execute(data) {
-    await this.adminClassRepository.createClassCourse(data);
+  async getCourseRegistrationStats(semester) {
+    return this.getCourseRegistrationStatsUseCase.execute(semester);
   }
 }
+const adminClassRepository = new AdminClassRepositoryImpl();
+const adminRepository = new AdminRepositoryImpl();
+const semesterRepository = new SemesterRepositoryImpl();
+const academicPeriodRepository = new AcademicPeriodRepositoryImpl();
+const getAllSemestersUseCase = new GetAllSemestersUseCase(semesterRepository);
+const createSemesterUseCase = new CreateSemesterUseCase(semesterRepository);
+const getAllAcademicPeriodsUseCase = new GetAllAcademicPeriodsUseCase(academicPeriodRepository);
+const saveAcademicPeriodUseCase = new SaveAcademicPeriodUseCase(academicPeriodRepository);
+const deleteAcademicPeriodUseCase = new DeleteAcademicPeriodUseCase(academicPeriodRepository);
+const createClassCourseUseCase = new CreateClassCourseUseCase(adminClassRepository);
+const getClassesByCourseUseCase = new GetClassesByCourseUseCase(adminClassRepository);
+const deleteClassCourseUseCase = new DeleteClassCourseUseCase(adminClassRepository);
+const getAllClassesBySemesterUseCase = new GetAllClassesBySemesterUseCase(adminClassRepository);
+const updateClassCourseUseCase = new UpdateClassCourseUseCase(adminClassRepository);
+const getCourseRegistrationStatsUseCase = new GetCourseRegistrationStatsUseCase(adminRepository);
+const semesterController = new SemesterController(getAllSemestersUseCase);
+const academicPeriodController = new AcademicPeriodController(
+  getAllAcademicPeriodsUseCase,
+  saveAcademicPeriodUseCase,
+  deleteAcademicPeriodUseCase
+);
+const adminClassController = new AdminClassController(
+  createClassCourseUseCase,
+  getClassesByCourseUseCase,
+  deleteClassCourseUseCase,
+  getAllClassesBySemesterUseCase,
+  updateClassCourseUseCase
+);
+const adminController = new AdminController(getCourseRegistrationStatsUseCase);
 const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
   const [isProfileOpen, setIsProfileOpen] = reactExports.useState(false);
   const [filters, setFilters] = reactExports.useState({});
@@ -15473,18 +15630,12 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
   const handleDelete = async (item) => {
     if (window.confirm(`Xác nhận xoá: Bạn có chắc chắn muốn xoá lớp ${item.ma_lop}?`)) {
       try {
-        const repo = new AdminClassRepositoryImpl();
-        const controller = new AdminClassController(
-          new CreateClassCourseUseCase(repo),
-          void 0,
-          new DeleteClassCourseUseCase(repo)
-        );
         const classId = item.id;
         if (!classId) {
           window.alert("Lỗi: Không tìm thấy ID của lớp học");
           return;
         }
-        await controller.deleteClassCourse(classId);
+        await adminClassController.deleteClassCourse(classId);
         setClassesData(
           (currentItems) => currentItems.filter((classItem) => classItem.ma_lop !== item.ma_lop)
         );
@@ -15502,14 +15653,6 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
   const [selectedClassSemesterId, setSelectedClassSemesterId] = reactExports.useState("");
   const [periodsData, setPeriodsData] = reactExports.useState([]);
   const [semestersData, setSemestersData] = reactExports.useState([]);
-  const semesterRepo = new SemesterRepositoryImpl();
-  const semesterUseCase = new GetAllSemestersUseCase(semesterRepo);
-  const semesterController = new SemesterController(semesterUseCase);
-  const periodRepo = new AcademicPeriodRepositoryImpl();
-  const getAllPeriodsUseCase = new GetAllAcademicPeriodsUseCase(periodRepo);
-  const savePeriodUseCase = new SaveAcademicPeriodUseCase(periodRepo);
-  const deletePeriodUseCase = new DeleteAcademicPeriodUseCase(periodRepo);
-  const periodController = new AcademicPeriodController(getAllPeriodsUseCase, savePeriodUseCase, deletePeriodUseCase);
   const loadData = async () => {
     try {
       const sData = await semesterController.getAllSemesters();
@@ -15520,7 +15663,7 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
       if (sData.length > 0 && selectedClassSemesterId === "") {
         setSelectedClassSemesterId(sData[0].id);
       }
-      const pData = await periodController.getAll();
+      const pData = await academicPeriodController.getAll();
       setPeriodsData(pData);
     } catch (error) {
       console.error("Failed to load registration periods data", error);
@@ -15528,14 +15671,7 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
   };
   const loadClassesData = async (semesterId) => {
     try {
-      const repo = new AdminClassRepositoryImpl();
-      const controller = new AdminClassController(
-        new CreateClassCourseUseCase(repo),
-        void 0,
-        void 0,
-        new GetAllClassesBySemesterUseCase(repo)
-      );
-      const data = await controller.getAllClassesBySemester(semesterId);
+      const data = await adminClassController.getAllClassesBySemester(semesterId);
       const mappedData = data.map((d) => ({
         id: d.id,
         ky: d.ky || semesterId.toString(),
@@ -15581,7 +15717,7 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
       return;
     }
     try {
-      await periodController.save({
+      await academicPeriodController.save({
         id: editPeriodId || void 0,
         semester: selectedSemester,
         period_type: regPeriodType,
@@ -15598,10 +15734,27 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
       window.alert(error.message || "Có lỗi xảy ra.");
     }
   };
+  const [isCreateSemesterModalOpen, setCreateSemesterModalOpen] = reactExports.useState(false);
+  const [newSemesterCode, setNewSemesterCode] = reactExports.useState("");
+  const handleCreateSemester = async () => {
+    if (!newSemesterCode || newSemesterCode.trim() === "") {
+      window.alert("Vui lòng nhập mã kỳ!");
+      return;
+    }
+    try {
+      await createSemesterUseCase.execute(newSemesterCode);
+      window.alert("Thêm học kỳ mới thành công!");
+      setCreateSemesterModalOpen(false);
+      setNewSemesterCode("");
+      loadData();
+    } catch (error) {
+      window.alert(error.message || "Lỗi thêm học kỳ.");
+    }
+  };
   const handleDeleteRegistrationPeriod = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa thiết lập đợt đăng ký này?")) {
       try {
-        await periodController.delete(id);
+        await academicPeriodController.delete(id);
         loadData();
       } catch (error) {
         window.alert(error.message || "Xoá thất bại.");
@@ -15654,7 +15807,12 @@ const useAdminDashboardViewModel = (onNavigateToEdit, onLogout) => {
     handleEditRegistrationPeriod,
     handleDeleteRegistrationPeriod,
     selectedClassSemesterId,
-    setSelectedClassSemesterId
+    setSelectedClassSemesterId,
+    isCreateSemesterModalOpen,
+    setCreateSemesterModalOpen,
+    newSemesterCode,
+    setNewSemesterCode,
+    handleCreateSemester
   };
 };
 const tableHeaders = [
@@ -15683,7 +15841,6 @@ const AdminDashboard = () => {
     isProfileOpen,
     toggleProfile,
     handleLogout,
-    handleUpload,
     filters,
     handleFilterChange,
     filteredClassesData,
@@ -15706,7 +15863,12 @@ const AdminDashboard = () => {
     handleEditRegistrationPeriod,
     handleDeleteRegistrationPeriod,
     selectedClassSemesterId,
-    setSelectedClassSemesterId
+    setSelectedClassSemesterId,
+    isCreateSemesterModalOpen,
+    setCreateSemesterModalOpen,
+    newSemesterCode,
+    setNewSemesterCode,
+    handleCreateSemester
   } = useAdminDashboardViewModel(onNavigateToEdit, onLogout);
   const { isDark, toggleTheme } = useTheme();
   const account = getCurrentAccount();
@@ -15730,7 +15892,10 @@ const AdminDashboard = () => {
       /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "registration-setup card", style: { display: "flex", flexDirection: "column", gap: "15px", marginBottom: "20px" }, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { style: { margin: 0 }, children: "Quản lý Giai đoạn đăng ký" }),
-          !isEditingPeriod && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: () => handleEditRegistrationPeriod(), children: "Thêm đợt đăng ký mới" })
+          !isEditingPeriod && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "10px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: () => setCreateSemesterModalOpen(true), style: { backgroundColor: "#28a745" }, children: "Thêm kỳ mới" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: () => handleEditRegistrationPeriod(), children: "Thêm đợt đăng ký mới" })
+          ] })
         ] }),
         isEditingPeriod && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "20px", alignItems: "center", flexWrap: "wrap", backgroundColor: "#f9f9f9", padding: "15px", borderRadius: "8px" }, children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "10px", alignItems: "center" }, children: [
@@ -15810,24 +15975,18 @@ const AdminDashboard = () => {
           ] }, period.id)) })
         ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { textAlign: "center", color: "#666" }, children: "Chưa có đợt đăng ký nào được thiết lập." })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "action-bar card", style: { display: "flex", alignItems: "flex-start" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: "15px" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { style: { margin: 0 }, children: "Quản lý danh sách lớp học" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "select",
-            {
-              value: selectedClassSemesterId,
-              onChange: (e) => setSelectedClassSemesterId(Number(e.target.value)),
-              style: { padding: "8px", borderRadius: "4px", border: "1px solid #ccc" },
-              children: semestersData.map((sem) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: sem.id, children: sem.semester }, sem.id))
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "upload-section", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: handleUpload, children: "Upload file" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "hint-text", style: { marginLeft: "10px" }, children: "* chỉ up file .xlsx" })
-        ] })
-      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("section", { className: "action-bar card", style: { display: "flex", alignItems: "flex-start" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: "15px" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { style: { margin: 0 }, children: "Quản lý danh sách lớp học" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "select",
+          {
+            value: selectedClassSemesterId,
+            onChange: (e) => setSelectedClassSemesterId(Number(e.target.value)),
+            style: { padding: "8px", borderRadius: "4px", border: "1px solid #ccc" },
+            children: semestersData.map((sem) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: sem.id, children: sem.semester }, sem.id))
+          }
+        )
+      ] }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("section", { className: "table-wrapper card", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-scroll", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "admin-table", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: tableHeaders.map((header, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("th", { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: header.label }),
@@ -15864,20 +16023,26 @@ const AdminDashboard = () => {
           ] }) })
         ] }, idx)) })
       ] }) }) })
-    ] })
+    ] }),
+    isCreateSemesterModalOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-overlay", style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1e3 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "card", style: { padding: "20px", minWidth: "300px", backgroundColor: "#fff", borderRadius: "8px" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { style: { marginTop: 0, textAlign: "center" }, children: "Thêm Kỳ Mới" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          type: "text",
+          placeholder: "Nhập mã kỳ (VD: 20261)",
+          value: newSemesterCode,
+          onChange: (e) => setNewSemesterCode(e.target.value),
+          style: { width: "100%", padding: "10px", marginBottom: "20px", boxSizing: "border-box", border: "1px solid #ccc", borderRadius: "4px" }
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "flex-end", gap: "10px" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "delete-btn", onClick: () => setCreateSemesterModalOpen(false), children: "Hủy" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-btn", onClick: handleCreateSemester, style: { backgroundColor: "#28a745" }, children: "Lưu" })
+      ] })
+    ] }) })
   ] });
 };
-class UpdateClassCourseUseCase {
-  constructor(repository) {
-    this.repository = repository;
-  }
-  async execute(id, data) {
-    if (!id) {
-      throw new Error("Missing class ID for update.");
-    }
-    await this.repository.updateClassCourse(id, data);
-  }
-}
 const useAdminCreateClassViewModel = (initialState, onNavigateBack, isEdit = false) => {
   const [formData, setFormData] = reactExports.useState({
     id: initialState.id,
@@ -15921,17 +16086,11 @@ const useAdminCreateClassViewModel = (initialState, onNavigateBack, isEdit = fal
           window.alert("Lỗi: Không tìm thấy ID lớp học để cập nhật");
           return;
         }
-        const repository = new AdminClassRepositoryImpl();
-        const updateUseCase = new UpdateClassCourseUseCase(repository);
-        const controller = new AdminClassController(new CreateClassCourseUseCase(repository), void 0, void 0, void 0, updateUseCase);
-        await controller.updateClassCourse(formData.id, payload);
+        await adminClassController.updateClassCourse(formData.id, payload);
         window.alert("Thành công: Đã cập nhật thông tin lớp học!");
         onNavigateBack();
       } else {
-        const repository = new AdminClassRepositoryImpl();
-        const useCase = new CreateClassCourseUseCase(repository);
-        const controller = new AdminClassController(useCase);
-        await controller.createClassCourse(payload);
+        await adminClassController.createClassCourse(payload);
         window.alert("Thành công: Đã lưu lớp học mới!");
         onNavigateBack();
       }
@@ -16088,60 +16247,6 @@ const AdminCreateClass = () => {
     ] })
   ] });
 };
-class CourseRegistrationStat {
-  constructor(course_id, ma_hp, ten_hp, truong_khoa, so_luong_dang_ky, so_luong_lop, so_luong_dk_toi_da) {
-    this.course_id = course_id;
-    this.ma_hp = ma_hp;
-    this.ten_hp = ten_hp;
-    this.truong_khoa = truong_khoa;
-    this.so_luong_dang_ky = so_luong_dang_ky;
-    this.so_luong_lop = so_luong_lop;
-    this.so_luong_dk_toi_da = so_luong_dk_toi_da;
-  }
-}
-class AdminRepositoryImpl {
-  async getCourseRegistrationStats(semester) {
-    try {
-      const data = await apiClient.get(`/admin/course-registration-stats?semester=${semester}`);
-      return data.map((item) => new CourseRegistrationStat(
-        item.course_id,
-        item.ma_hp,
-        item.ten_hp,
-        item.truong_khoa,
-        item.so_luong_dang_ky,
-        item.so_luong_lop,
-        item.so_luong_dk_toi_da
-      ));
-    } catch (error) {
-      console.error("AdminRepositoryImpl getCourseRegistrationStats error:", error);
-      throw new Error(error.message || "Lỗi kết nối tới máy chủ.");
-    }
-  }
-}
-class GetCourseRegistrationStatsUseCase {
-  constructor(adminRepository) {
-    this.adminRepository = adminRepository;
-  }
-  async execute(semester) {
-    return this.adminRepository.getCourseRegistrationStats(semester);
-  }
-}
-class AdminController {
-  constructor(getCourseRegistrationStatsUseCase) {
-    this.getCourseRegistrationStatsUseCase = getCourseRegistrationStatsUseCase;
-  }
-  async getCourseRegistrationStats(semester) {
-    return this.getCourseRegistrationStatsUseCase.execute(semester);
-  }
-}
-class GetClassesByCourseUseCase {
-  constructor(adminClassRepository) {
-    this.adminClassRepository = adminClassRepository;
-  }
-  async execute(semester, courseId) {
-    return await this.adminClassRepository.getClassesByCourse(semester, courseId);
-  }
-}
 const useAdminCourseRegistrationDetailsViewModel = (semester) => {
   const [stats, setStats] = reactExports.useState([]);
   const [loading, setLoading] = reactExports.useState(false);
@@ -16153,23 +16258,13 @@ const useAdminCourseRegistrationDetailsViewModel = (semester) => {
   const [expandedCourseId, setExpandedCourseId] = reactExports.useState(null);
   const [courseClasses, setCourseClasses] = reactExports.useState({});
   const [loadingClasses, setLoadingClasses] = reactExports.useState(false);
-  const getAdminClassController = () => {
-    const repo = new AdminClassRepositoryImpl();
-    const getUseCase = new GetClassesByCourseUseCase(repo);
-    const deleteUseCase = new DeleteClassCourseUseCase(repo);
-    const createUseCase = new CreateClassCourseUseCase(repo);
-    return new AdminClassController(createUseCase, getUseCase, deleteUseCase);
-  };
   reactExports.useEffect(() => {
     if (!semester) return;
     const loadStats = async () => {
       setLoading(true);
       setError(null);
       try {
-        const adminRepo = new AdminRepositoryImpl();
-        const useCase = new GetCourseRegistrationStatsUseCase(adminRepo);
-        const controller = new AdminController(useCase);
-        const data = await controller.getCourseRegistrationStats(semester);
+        const data = await adminController.getCourseRegistrationStats(semester);
         setStats(data);
       } catch (err) {
         setError(err.message || "Có lỗi xảy ra khi tải dữ liệu thống kê");
@@ -16191,8 +16286,7 @@ const useAdminCourseRegistrationDetailsViewModel = (semester) => {
     if (!courseClasses[courseId]) {
       setLoadingClasses(true);
       try {
-        const controller = getAdminClassController();
-        const classes = await controller.getClassesByCourse(sem, courseId);
+        const classes = await adminClassController.getClassesByCourse(sem, courseId);
         setCourseClasses((prev) => ({ ...prev, [courseId]: classes }));
       } catch (err) {
         window.alert("Lỗi khi tải danh sách lớp: " + (err.message || ""));
@@ -16204,11 +16298,10 @@ const useAdminCourseRegistrationDetailsViewModel = (semester) => {
   const handleDeleteClass = async (classId, courseId, sem) => {
     if (window.confirm("Bạn có chắc chắn muốn xoá lớp học này?")) {
       try {
-        const controller = getAdminClassController();
-        await controller.deleteClassCourse(classId);
+        await adminClassController.deleteClassCourse(classId);
         window.alert("Xoá lớp thành công!");
         setLoadingClasses(true);
-        const classes = await controller.getClassesByCourse(sem, courseId);
+        const classes = await adminClassController.getClassesByCourse(sem, courseId);
         setCourseClasses((prev) => ({ ...prev, [courseId]: classes }));
       } catch (err) {
         window.alert("Lỗi khi xoá lớp: " + (err.message || ""));
@@ -16387,7 +16480,7 @@ const AdminCourseRegistrationDetails = () => {
                   /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: stat.so_luong_lop }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: stat.so_luong_dk_toi_da }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: {
-                    color: trangThai === "Đã đáp ứng đủ" ? "green" : "#ff4d4f",
+                    color: trangThai === "Đã đáp ứng đủ" ? "var(--statusSuccess)" : "var(--statusDanger)",
                     fontWeight: "bold"
                   }, children: trangThai }) }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { children: [
@@ -16402,7 +16495,7 @@ const AdminCourseRegistrationDetails = () => {
                     /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "secondary-btn", style: { fontSize: "12px", padding: "5px 10px" }, onClick: () => toggleExpandCourse(stat.course_id, semester), children: expandedCourseId === stat.course_id ? "Đóng danh sách" : "Xem danh sách lớp" })
                   ] })
                 ] }),
-                expandedCourseId === stat.course_id && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { style: { backgroundColor: "#f9f9f9" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 8, style: { padding: "20px" }, children: loadingClasses && !courseClasses[stat.course_id] ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Đang tải danh sách lớp..." }) : (courseClasses[stat.course_id] || []).length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { textAlign: "center", fontStyle: "italic", margin: 0 }, children: "Chưa có lớp học nào" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "admin-table", style: { margin: 0 }, children: [
+                expandedCourseId === stat.course_id && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { style: { backgroundColor: "var(--surface)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 8, style: { padding: "20px" }, children: loadingClasses && !courseClasses[stat.course_id] ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Đang tải danh sách lớp..." }) : (courseClasses[stat.course_id] || []).length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { textAlign: "center", fontStyle: "italic", margin: 0 }, children: "Chưa có lớp học nào" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "admin-table", style: { margin: 0 }, children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã lớp" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã lớp kèm" }),
@@ -16446,47 +16539,44 @@ const AdminCourseRegistrationDetails = () => {
     ] })
   ] });
 };
-class ManageStudentRegistration {
-  constructor(repository) {
-    this.repository = repository;
-  }
-  getCurriculum(studentId) {
-    return this.repository.getCurriculum(studentId);
-  }
-  getRegisteredCourses(studentId) {
-    return this.repository.getRegisteredCourses(studentId);
-  }
-  searchCourseSuggestions(studentId, query) {
-    if (!query.trim()) {
-      return Promise.resolve([]);
-    }
-    return this.repository.searchCourseSuggestions(studentId, query.trim());
-  }
-  registerCourse(studentId, courseId) {
-    return this.repository.registerCourse(studentId, courseId);
-  }
-  cancelCourseRegistration(studentId, courseId) {
-    return this.repository.cancelCourseRegistration(studentId, courseId);
-  }
-  searchClassSuggestions(studentId, query) {
-    if (!query.trim()) {
-      return Promise.resolve([]);
-    }
-    return this.repository.searchClassSuggestions(studentId, query.trim());
-  }
-  registerClass(studentId, classId) {
-    return this.repository.registerClass(studentId, classId);
-  }
-  cancelClassRegistration(studentId, classId) {
-    return this.repository.cancelClassRegistration(studentId, classId);
-  }
-  getClassesForCourse(studentId, courseId) {
-    return this.repository.getClassesForCourse(studentId, courseId);
-  }
-  getTimetable(studentId) {
-    return this.repository.getTimetable(studentId);
-  }
-}
+const useRegistrationPeriodViewModel = () => {
+  const [currentRegPeriodType, setCurrentRegPeriodType] = reactExports.useState("none");
+  const [activeSemesterId, setActiveSemesterId] = reactExports.useState(null);
+  const [activeSemesterName, setActiveSemesterName] = reactExports.useState(null);
+  reactExports.useEffect(() => {
+    const checkRegistrationPeriod = async () => {
+      try {
+        const periods = await academicPeriodController.getAll();
+        const activePeriod = periods.find((p) => p.is_active === 1);
+        if (activePeriod) {
+          const now2 = /* @__PURE__ */ new Date();
+          const start = new Date(activePeriod.start_date);
+          const end = new Date(activePeriod.end_date);
+          setActiveSemesterId(activePeriod.semester);
+          setActiveSemesterName(activePeriod.semester_name);
+          if (now2 >= start && now2 <= end) {
+            setCurrentRegPeriodType(
+              activePeriod.period_type
+            );
+          } else {
+            setCurrentRegPeriodType("none");
+          }
+        } else {
+          setCurrentRegPeriodType("none");
+          setActiveSemesterId(null);
+          setActiveSemesterName(null);
+        }
+      } catch (error) {
+        console.error("Lỗi khi kiểm tra đợt đăng ký từ server", error);
+        setCurrentRegPeriodType("none");
+      }
+    };
+    checkRegistrationPeriod();
+    const interval = setInterval(checkRegistrationPeriod, 6e4);
+    return () => clearInterval(interval);
+  }, []);
+  return { currentRegPeriodType, activeSemesterId, activeSemesterName };
+};
 class StudentRegistrationRepositoryImpl {
   getCurriculum(studentId) {
     return apiClient.get(`/students/${studentId}/curriculum`);
@@ -16532,16 +16622,173 @@ class StudentRegistrationRepositoryImpl {
     return apiClient.get(`/students/${studentId}/timetable`);
   }
 }
-const registrationUseCase$1 = new ManageStudentRegistration(
-  new StudentRegistrationRepositoryImpl()
-);
-function toStatusLabel(status) {
-  if (status === "completed") return "Đã học";
-  if (status === "registered") return "Học phần chưa hoàn thành";
-  if (status === "re_registered") return "Học cải thiện";
-  if (status === "cancelled") return "Đã hủy";
-  return status;
+class GetCurriculumUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  execute(studentId) {
+    return this.repository.getCurriculum(studentId);
+  }
 }
+class GetRegisteredCoursesUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  execute(studentId) {
+    return this.repository.getRegisteredCourses(studentId);
+  }
+}
+class SearchCourseSuggestionsUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  execute(studentId, query) {
+    if (!query.trim()) {
+      return Promise.resolve([]);
+    }
+    return this.repository.searchCourseSuggestions(studentId, query.trim());
+  }
+}
+class RegisterCourseUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  execute(studentId, courseId) {
+    return this.repository.registerCourse(studentId, courseId);
+  }
+}
+class CancelCourseRegistrationUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  execute(studentId, courseId) {
+    return this.repository.cancelCourseRegistration(studentId, courseId);
+  }
+}
+class SearchClassSuggestionsUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  execute(studentId, query) {
+    if (!query.trim()) {
+      return Promise.resolve([]);
+    }
+    return this.repository.searchClassSuggestions(studentId, query.trim());
+  }
+}
+class RegisterClassUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  execute(studentId, classId) {
+    return this.repository.registerClass(studentId, classId);
+  }
+}
+class CancelClassRegistrationUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  execute(studentId, classId) {
+    return this.repository.cancelClassRegistration(studentId, classId);
+  }
+}
+class GetClassesForCourseUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  execute(studentId, courseId) {
+    return this.repository.getClassesForCourse(studentId, courseId);
+  }
+}
+class GetTimetableUseCase {
+  constructor(repository) {
+    this.repository = repository;
+  }
+  execute(studentId) {
+    return this.repository.getTimetable(studentId);
+  }
+}
+class CurriculumController {
+  constructor(getCurriculumUseCase2) {
+    this.getCurriculumUseCase = getCurriculumUseCase2;
+  }
+  async getCurriculum(studentId) {
+    return this.getCurriculumUseCase.execute(studentId);
+  }
+}
+class CourseRegistrationController {
+  constructor(getRegisteredCoursesUseCase2, searchCourseSuggestionsUseCase2, registerCourseUseCase2, cancelCourseRegistrationUseCase2) {
+    this.getRegisteredCoursesUseCase = getRegisteredCoursesUseCase2;
+    this.searchCourseSuggestionsUseCase = searchCourseSuggestionsUseCase2;
+    this.registerCourseUseCase = registerCourseUseCase2;
+    this.cancelCourseRegistrationUseCase = cancelCourseRegistrationUseCase2;
+  }
+  async getRegisteredCourses(studentId) {
+    return this.getRegisteredCoursesUseCase.execute(studentId);
+  }
+  async searchCourseSuggestions(studentId, query) {
+    return this.searchCourseSuggestionsUseCase.execute(studentId, query);
+  }
+  async registerCourse(studentId, courseId) {
+    return this.registerCourseUseCase.execute(studentId, courseId);
+  }
+  async cancelCourseRegistration(studentId, courseId) {
+    return this.cancelCourseRegistrationUseCase.execute(studentId, courseId);
+  }
+}
+class ClassRegistrationController {
+  constructor(searchClassSuggestionsUseCase2, registerClassUseCase2, cancelClassRegistrationUseCase2, getClassesForCourseUseCase2) {
+    this.searchClassSuggestionsUseCase = searchClassSuggestionsUseCase2;
+    this.registerClassUseCase = registerClassUseCase2;
+    this.cancelClassRegistrationUseCase = cancelClassRegistrationUseCase2;
+    this.getClassesForCourseUseCase = getClassesForCourseUseCase2;
+  }
+  async searchClassSuggestions(studentId, query) {
+    return this.searchClassSuggestionsUseCase.execute(studentId, query);
+  }
+  async registerClass(studentId, classId) {
+    return this.registerClassUseCase.execute(studentId, classId);
+  }
+  async cancelClassRegistration(studentId, classId) {
+    return this.cancelClassRegistrationUseCase.execute(studentId, classId);
+  }
+  async getClassesForCourse(studentId, courseId) {
+    return this.getClassesForCourseUseCase.execute(studentId, courseId);
+  }
+}
+class TimetableController {
+  constructor(getTimetableUseCase2) {
+    this.getTimetableUseCase = getTimetableUseCase2;
+  }
+  async getTimetable(studentId) {
+    return this.getTimetableUseCase.execute(studentId);
+  }
+}
+const studentRegistrationRepository = new StudentRegistrationRepositoryImpl();
+const getCurriculumUseCase = new GetCurriculumUseCase(studentRegistrationRepository);
+const getRegisteredCoursesUseCase = new GetRegisteredCoursesUseCase(studentRegistrationRepository);
+const searchCourseSuggestionsUseCase = new SearchCourseSuggestionsUseCase(studentRegistrationRepository);
+const registerCourseUseCase = new RegisterCourseUseCase(studentRegistrationRepository);
+const cancelCourseRegistrationUseCase = new CancelCourseRegistrationUseCase(studentRegistrationRepository);
+const searchClassSuggestionsUseCase = new SearchClassSuggestionsUseCase(studentRegistrationRepository);
+const registerClassUseCase = new RegisterClassUseCase(studentRegistrationRepository);
+const cancelClassRegistrationUseCase = new CancelClassRegistrationUseCase(studentRegistrationRepository);
+const getClassesForCourseUseCase = new GetClassesForCourseUseCase(studentRegistrationRepository);
+const getTimetableUseCase = new GetTimetableUseCase(studentRegistrationRepository);
+const curriculumController = new CurriculumController(getCurriculumUseCase);
+const courseRegistrationController = new CourseRegistrationController(
+  getRegisteredCoursesUseCase,
+  searchCourseSuggestionsUseCase,
+  registerCourseUseCase,
+  cancelCourseRegistrationUseCase
+);
+const classRegistrationController = new ClassRegistrationController(
+  searchClassSuggestionsUseCase,
+  registerClassUseCase,
+  cancelClassRegistrationUseCase,
+  getClassesForCourseUseCase
+);
+const timetableController = new TimetableController(getTimetableUseCase);
 function parseTimetableEvents(entries) {
   return entries.flatMap((entry) => {
     if (!entry.detail) return [];
@@ -16558,11 +16805,7 @@ function parseTimetableEvents(entries) {
         }
         const events = [];
         for (let i = start; i <= end; i++) {
-          events.push({
-            day: dayStr,
-            period: i,
-            name: entry.code
-          });
+          events.push({ day: dayStr, period: i, name: entry.code });
         }
         return events;
       }
@@ -16570,59 +16813,90 @@ function parseTimetableEvents(entries) {
       if (!Array.isArray(slots)) return [];
       return slots.flatMap((slot) => {
         const periods = Array.isArray(slot.periods) ? slot.periods : [slot.period].filter(Boolean);
-        return periods.map((period) => ({
-          day: slot.day,
-          period,
-          name: entry.code
-        }));
+        return periods.map((period) => ({ day: slot.day, period, name: entry.code }));
       });
     } catch (_err) {
       return [];
     }
   });
 }
-const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
-  const studentId = account?.id ?? 1;
-  const status = account?.status ?? "study";
-  const [isUserInfoVisible, setIsUserInfoVisible] = reactExports.useState(false);
+const useTimetableViewModel = (studentId) => {
+  const [registeredClasses, setRegisteredClasses] = reactExports.useState([]);
+  const [timeGridEvents, setTimeGridEvents] = reactExports.useState([]);
+  const reloadTimetable = reactExports.useCallback(async () => {
+    try {
+      const timetable = await timetableController.getTimetable(studentId);
+      setRegisteredClasses(timetable);
+      setTimeGridEvents(parseTimetableEvents(timetable));
+    } catch (error) {
+      console.error("Không thể tải thời khóa biểu", error);
+    }
+  }, [studentId]);
+  return { registeredClasses, timeGridEvents, reloadTimetable };
+};
+function toStatusLabel(status) {
+  if (status === "completed") return "Đã học";
+  if (status === "registered") return "Học phần chưa hoàn thành";
+  if (status === "re_registered") return "Học cải thiện";
+  if (status === "cancelled") return "Đã hủy";
+  return status;
+}
+const useCourseRegistrationViewModel = (studentId, account, activeSemesterId, currentRegPeriodType, setAlarmMessage, setIsSubmitting) => {
   const [searchQuery, setSearchQuery] = reactExports.useState("");
   const [isSuggestionVisible, setIsSuggestionVisible] = reactExports.useState(false);
   const [suggestions, setSuggestions] = reactExports.useState([]);
+  const [curriculumCourses, setCurriculumCourses] = reactExports.useState([]);
   const [selectedSuggestion, setSelectedSuggestion] = reactExports.useState(null);
   const [isSearching, setIsSearching] = reactExports.useState(false);
   const [searchError, setSearchError] = reactExports.useState(null);
   const [registeredSubjects, setRegisteredSubjects] = reactExports.useState([]);
-  const [registeredClasses, setRegisteredClasses] = reactExports.useState([]);
-  const [timeGridEvents, setTimeGridEvents] = reactExports.useState([]);
-  const [currentRegPeriodType, setCurrentRegPeriodType] = reactExports.useState("none");
-  const [isSubmitting, setIsSubmitting] = reactExports.useState(false);
-  const [alarmMessage, setAlarmMessage] = reactExports.useState(null);
   const [courseIdToDelete, setCourseIdToDelete] = reactExports.useState(null);
-  const [activeSemesterId, setActiveSemesterId] = reactExports.useState(null);
-  const [activeSemesterName, setActiveSemesterName] = reactExports.useState(null);
-  const [expandedCourseIds, setExpandedCourseIds] = reactExports.useState(/* @__PURE__ */ new Set());
-  const [courseClassesData, setCourseClassesData] = reactExports.useState({});
-  const [isLoadingClasses, setIsLoadingClasses] = reactExports.useState({});
-  const reloadStudentData = async () => {
-    const [registeredCourses, timetable] = await Promise.all([
-      registrationUseCase$1.getRegisteredCourses(studentId),
-      registrationUseCase$1.getTimetable(studentId)
-    ]);
-    setRegisteredSubjects(
-      registeredCourses.map((course) => ({
-        id: String(course.id),
-        courseId: course.courseId,
-        semester: course.semester,
-        code: course.code,
-        name: course.name,
-        credits: course.credits,
-        rawStatus: course.status,
-        status: toStatusLabel(course.status)
-      }))
-    );
-    setRegisteredClasses(timetable);
-    setTimeGridEvents(parseTimetableEvents(timetable));
-  };
+  const reloadCourses = reactExports.useCallback(async () => {
+    try {
+      const [registeredCourses, curriculum] = await Promise.all([
+        courseRegistrationController.getRegisteredCourses(studentId),
+        curriculumController.getCurriculum(studentId)
+      ]);
+      setRegisteredSubjects(
+        registeredCourses.map((course) => ({
+          id: String(course.id),
+          courseId: course.courseId,
+          semester: course.semester,
+          code: course.code,
+          name: course.name,
+          credits: course.credits,
+          rawStatus: course.status,
+          status: toStatusLabel(course.status)
+        }))
+      );
+      setCurriculumCourses(curriculum.courses);
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu đăng ký học phần", error);
+    }
+  }, [studentId]);
+  reactExports.useEffect(() => {
+    reloadCourses();
+  }, [reloadCourses]);
+  reactExports.useEffect(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (currentRegPeriodType !== "register_program") {
+      setSuggestions([]);
+      setSelectedSuggestion(null);
+      setIsSearching(false);
+      setSearchError(null);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      setIsSearching(true);
+      setSearchError(null);
+      const filtered = curriculumCourses.filter(
+        (course) => !query || course.code.toLowerCase().includes(query) || course.name.toLowerCase().includes(query)
+      ).slice(0, 10);
+      setSuggestions(filtered);
+      setIsSearching(false);
+    }, 250);
+    return () => clearTimeout(timeout);
+  }, [currentRegPeriodType, searchQuery, curriculumCourses]);
   const handleSelectSuggestion = (item) => {
     setSelectedSuggestion(item);
     setSearchQuery(item.code);
@@ -16633,108 +16907,38 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
     setSelectedSuggestion(null);
     setIsSuggestionVisible(true);
   };
-  reactExports.useEffect(() => {
-    const checkRegistrationPeriod = async () => {
-      try {
-        const periodRepo = new AcademicPeriodRepositoryImpl();
-        const getAllPeriodsUseCase = new GetAllAcademicPeriodsUseCase(periodRepo);
-        const periodController = new AcademicPeriodController(
-          getAllPeriodsUseCase,
-          null,
-          null
-        );
-        const periods = await periodController.getAll();
-        const activePeriod = periods.find((p) => p.is_active === 1);
-        if (activePeriod) {
-          const now2 = /* @__PURE__ */ new Date();
-          const start = new Date(activePeriod.start_date);
-          const end = new Date(activePeriod.end_date);
-          setActiveSemesterId(activePeriod.semester);
-          setActiveSemesterName(activePeriod.semester_name);
-          if (now2 >= start && now2 <= end) {
-            setCurrentRegPeriodType(
-              activePeriod.period_type
-            );
-          } else {
-            setCurrentRegPeriodType("none");
-          }
-        } else {
-          setCurrentRegPeriodType("none");
-          setActiveSemesterId(null);
-          setActiveSemesterName(null);
-        }
-      } catch (error) {
-        console.error("Lỗi khi kiểm tra đợt đăng ký từ server", error);
-        setCurrentRegPeriodType("none");
-      }
-    };
-    checkRegistrationPeriod();
-    const interval = setInterval(checkRegistrationPeriod, 6e4);
-    return () => clearInterval(interval);
-  }, []);
-  reactExports.useEffect(() => {
-    reloadStudentData().catch((error) => {
-      console.error("Không thể tải dữ liệu sinh viên", error);
-    });
-  }, [studentId]);
-  reactExports.useEffect(() => {
-    const query = searchQuery.trim();
-    if (currentRegPeriodType === "none") {
-      setSuggestions([]);
-      setSelectedSuggestion(null);
-      setIsSearching(false);
-      setSearchError(null);
-      return;
+  const totalCredits = reactExports.useMemo(() => {
+    return registeredSubjects.filter((subject) => subject.semester === activeSemesterId).reduce((sum, subject) => sum + subject.credits, 0);
+  }, [registeredSubjects, activeSemesterId]);
+  const maxCredits = reactExports.useMemo(() => {
+    if (!account) return 24;
+    if (typeof account.getMaxAllowedCredits === "function") {
+      return account.getMaxAllowedCredits();
     }
-    const timeout = setTimeout(() => {
-      setIsSearching(true);
-      setSearchError(null);
-      const request2 = currentRegPeriodType === "register_program" ? registrationUseCase$1.searchCourseSuggestions(studentId, query) : registrationUseCase$1.searchClassSuggestions(studentId, query);
-      request2.then(setSuggestions).catch((error) => {
-        console.error("Không thể tải gợi ý đăng ký", error);
-        setSearchError(
-          error instanceof Error ? error.message : "Không thể tải gợi ý đăng ký."
-        );
-        setSuggestions([]);
-      }).finally(() => {
-        setIsSearching(false);
-      });
-    }, 250);
-    return () => clearTimeout(timeout);
-  }, [currentRegPeriodType, searchQuery, studentId]);
-  const fallbackSuggestion = reactExports.useMemo(() => {
-    const normalized = searchQuery.trim().toLowerCase();
-    return suggestions.find(
-      (item) => item.code.toLowerCase() === normalized || item.name.toLowerCase() === normalized
-    );
-  }, [searchQuery, suggestions]);
-  const registerTarget = selectedSuggestion ?? fallbackSuggestion;
-  const toggleUserInfo = () => {
-    setIsUserInfoVisible((currentValue) => !currentValue);
-  };
-  const handleLogout = () => {
-    setIsUserInfoVisible(false);
-    onLogout();
-  };
-  const handleViewCurriculum = () => {
-    onViewCurriculum?.();
-  };
+    const tempAccount = new Account(account.id, account.username, account.name, account.role, account.id_card, account.status);
+    return tempAccount.getMaxAllowedCredits();
+  }, [account]);
+  const statusNote = reactExports.useMemo(() => {
+    if (!account) return "Bạn được đăng ký tối đa 24 TC";
+    if (typeof account.getRegistrationStatusNote === "function") {
+      return account.getRegistrationStatusNote();
+    }
+    const tempAccount = new Account(account.id, account.username, account.name, account.role, account.id_card, account.status);
+    return tempAccount.getRegistrationStatusNote();
+  }, [account]);
   const handleRegisterSubject = async () => {
-    if (currentRegPeriodType === "none") {
-      window.alert("Hiện không trong giai đoạn đăng ký.");
-      return;
-    }
+    if (currentRegPeriodType !== "register_program") return;
     if (!searchQuery.trim()) {
-      window.alert("Vui lòng nhập mã hoặc tên học phần/lớp học.");
+      setAlarmMessage("Vui lòng nhập mã hoặc tên học phần.");
       return;
     }
+    const fallbackSuggestion = suggestions.find((item) => item.code.toLowerCase() === searchQuery.trim().toLowerCase() || item.name.toLowerCase() === searchQuery.trim().toLowerCase());
+    const registerTarget = selectedSuggestion ?? fallbackSuggestion;
     if (!registerTarget) {
-      window.alert("Vui lòng chọn một gợi ý hợp lệ từ danh sách.");
+      setAlarmMessage("Vui lòng chọn một gợi ý hợp lệ từ danh sách.");
       return;
     }
-    const isAlreadyRegistered = registeredSubjects.some(
-      (sub) => sub.courseId === registerTarget.courseId
-    );
+    const isAlreadyRegistered = registeredSubjects.some((sub) => sub.courseId === registerTarget.courseId);
     const additionalCredits = isAlreadyRegistered ? 0 : registerTarget.credits;
     if (totalCredits + additionalCredits > maxCredits) {
       setAlarmMessage(`Tổng số TC vượt quá giới hạn. Số TC cho phép của bạn là ${maxCredits} TC.`);
@@ -16742,42 +16946,25 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
     }
     try {
       setIsSubmitting(true);
-      if (currentRegPeriodType === "register_program") {
-        const result = await registrationUseCase$1.registerCourse(
-          studentId,
-          registerTarget.courseId
-        );
-        setAlarmMessage(result.message);
-      } else {
-        await registrationUseCase$1.registerClass(
-          studentId,
-          registerTarget.id
-        );
-        setAlarmMessage(`Đã đăng ký lớp học phần ${registerTarget.code}.`);
-      }
+      const result = await courseRegistrationController.registerCourse(studentId, registerTarget.courseId);
+      setAlarmMessage(result.message);
       setSearchQuery("");
       setIsSuggestionVisible(false);
       setSuggestions([]);
       setSelectedSuggestion(null);
-      await reloadStudentData();
+      await reloadCourses();
     } catch (error) {
       setAlarmMessage(error.message || "Đăng ký thất bại.");
     } finally {
       setIsSubmitting(false);
     }
   };
-  const promptDeleteCourse = (courseId) => {
-    setCourseIdToDelete(courseId);
-  };
-  const cancelDeleteCourse = () => {
-    setCourseIdToDelete(null);
-  };
   const confirmDeleteCourse = async () => {
     if (!courseIdToDelete) return;
     try {
       setIsSubmitting(true);
-      await registrationUseCase$1.cancelCourseRegistration(studentId, courseIdToDelete);
-      await reloadStudentData();
+      await courseRegistrationController.cancelCourseRegistration(studentId, courseIdToDelete);
+      await reloadCourses();
       setAlarmMessage("Xoá đăng ký học phần thành công.");
     } catch (error) {
       setAlarmMessage(error.message || "Xoá thất bại.");
@@ -16786,35 +16973,31 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
       setCourseIdToDelete(null);
     }
   };
-  const totalCredits = reactExports.useMemo(() => {
-    return registeredSubjects.filter((subject) => subject.semester === activeSemesterId).reduce((sum, subject) => sum + subject.credits, 0);
-  }, [registeredSubjects, activeSemesterId]);
-  const maxCredits = reactExports.useMemo(() => {
-    switch (status) {
-      case "study_cc1":
-        return 20;
-      case "study_cc2":
-        return 16;
-      case "study_cc3":
-        return 12;
-      case "study":
-      default:
-        return 24;
-    }
-  }, [status]);
-  const statusNote = reactExports.useMemo(() => {
-    switch (status) {
-      case "study_cc1":
-        return "Bạn đang bị cảnh cáo mức 1. Chỉ được đăng ký tối đa 20 TC";
-      case "study_cc2":
-        return "Bạn đang bị cảnh cáo mức 2. Chỉ được đăng ký tối đa 16 TC";
-      case "study_cc3":
-        return "Bạn đang bị cảnh cáo mức 3. Chỉ được đăng ký tối đa 12 TC";
-      case "study":
-      default:
-        return "Bạn được đăng ký tối đa 24 TC";
-    }
-  }, [status]);
+  return {
+    searchQuery,
+    handleSearchQueryChange,
+    isSuggestionVisible,
+    setIsSuggestionVisible,
+    suggestedSubjects: suggestions,
+    isSearching,
+    searchError,
+    handleSelectSuggestion,
+    handleRegisterSubject,
+    registeredSubjects,
+    totalCredits,
+    maxCredits,
+    statusNote,
+    courseIdToDelete,
+    promptDeleteCourse: setCourseIdToDelete,
+    cancelDeleteCourse: () => setCourseIdToDelete(null),
+    confirmDeleteCourse,
+    reloadCourses
+  };
+};
+const useClassRegistrationViewModel = (studentId, currentRegPeriodType, setAlarmMessage, setIsSubmitting, reloadTimetable) => {
+  const [expandedCourseIds, setExpandedCourseIds] = reactExports.useState(/* @__PURE__ */ new Set());
+  const [courseClassesData, setCourseClassesData] = reactExports.useState({});
+  const [isLoadingClasses, setIsLoadingClasses] = reactExports.useState({});
   const toggleCourseExpansion = async (courseId) => {
     setExpandedCourseIds((prev) => {
       const next = new Set(prev);
@@ -16828,7 +17011,7 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
     if (!courseClassesData[courseId] && !isLoadingClasses[courseId]) {
       setIsLoadingClasses((prev) => ({ ...prev, [courseId]: true }));
       try {
-        const classes = await registrationUseCase$1.getClassesForCourse(studentId, courseId);
+        const classes = await classRegistrationController.getClassesForCourse(studentId, courseId);
         setCourseClassesData((prev) => ({ ...prev, [courseId]: classes }));
       } catch (error) {
         console.error("Lỗi khi tải danh sách lớp", error);
@@ -16840,14 +17023,14 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
   };
   const handleRegisterClassSection = async (classId, classCode) => {
     if (currentRegPeriodType !== "register_class") {
-      window.alert("Hiện không trong giai đoạn đăng ký lớp học.");
+      setAlarmMessage("Hiện không trong giai đoạn đăng ký lớp học.");
       return;
     }
     try {
       setIsSubmitting(true);
-      await registrationUseCase$1.registerClass(studentId, classId);
+      await classRegistrationController.registerClass(studentId, classId);
       setAlarmMessage(`Đã đăng ký lớp học phần ${classCode} thành công.`);
-      await reloadStudentData();
+      await reloadTimetable();
     } catch (error) {
       setAlarmMessage(error.message || "Đăng ký thất bại.");
     } finally {
@@ -16856,7 +17039,7 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
   };
   const handleCancelClassSection = async (classId, classCode) => {
     if (currentRegPeriodType !== "register_class") {
-      window.alert("Hiện không trong giai đoạn đăng ký lớp học.");
+      setAlarmMessage("Hiện không trong giai đoạn đăng ký lớp học.");
       return;
     }
     if (!window.confirm(`Bạn có chắc chắn muốn huỷ đăng ký lớp ${classCode}?`)) {
@@ -16864,51 +17047,36 @@ const useStudentDashboardViewModel = (onLogout, account, onViewCurriculum) => {
     }
     try {
       setIsSubmitting(true);
-      await registrationUseCase$1.cancelClassRegistration(studentId, classId);
+      await classRegistrationController.cancelClassRegistration(studentId, classId);
       setAlarmMessage(`Đã huỷ lớp học phần ${classCode} thành công.`);
-      await reloadStudentData();
+      await reloadTimetable();
     } catch (error) {
       setAlarmMessage(error.message || "Huỷ thất bại.");
     } finally {
       setIsSubmitting(false);
     }
   };
+  const handleRegisterClassFromSearch = async (classId, classCode) => {
+    if (currentRegPeriodType !== "register_class") return;
+    try {
+      setIsSubmitting(true);
+      await classRegistrationController.registerClass(studentId, classId);
+      setAlarmMessage(`Đã đăng ký lớp học phần ${classCode} thành công.`);
+      await reloadTimetable();
+    } catch (error) {
+      setAlarmMessage(error.message || "Đăng ký thất bại.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   return {
-    isUserInfoVisible,
-    toggleUserInfo,
-    searchQuery,
-    handleSearchQueryChange,
-    isSuggestionVisible,
-    setIsSuggestionVisible,
-    suggestedSubjects: suggestions,
-    isSearching,
-    searchError,
-    handleSelectSuggestion,
-    handleRegisterSubject,
-    handleViewCurriculum,
-    handleLogout,
-    registeredSubjects,
-    registeredClasses,
-    timeGridEvents,
-    currentRegPeriodType,
-    isSubmitting,
-    alarmMessage,
-    setAlarmMessage,
-    courseIdToDelete,
-    promptDeleteCourse,
-    cancelDeleteCourse,
-    confirmDeleteCourse,
-    activeSemesterId,
-    activeSemesterName,
-    totalCredits,
-    maxCredits,
-    statusNote,
     expandedCourseIds,
     courseClassesData,
     isLoadingClasses,
     toggleCourseExpansion,
     handleRegisterClassSection,
-    handleCancelClassSection
+    handleCancelClassSection,
+    handleRegisterClassFromSearch
   };
 };
 const AlarmOneChoose = ({ message, buttonText, onClose }) => {
@@ -16938,14 +17106,23 @@ const afternoonPeriods = [7, 8, 9, 10, 11, 12];
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const account = getCurrentAccount();
+  const studentId = account?.id ?? 1;
   const onLogout = () => {
     clearCurrentAccount();
     navigate("/login");
   };
-  const onViewCurriculum = () => navigate("/student/curriculum");
+  const handleViewCurriculum = () => navigate("/student/curriculum");
+  const [isUserInfoVisible, setIsUserInfoVisible] = React$2.useState(false);
+  const toggleUserInfo = () => setIsUserInfoVisible((prev) => !prev);
+  const handleLogout = () => {
+    setIsUserInfoVisible(false);
+    onLogout();
+  };
+  const [isSubmitting, setIsSubmitting] = React$2.useState(false);
+  const [alarmMessage, setAlarmMessage] = React$2.useState(null);
+  const { currentRegPeriodType, activeSemesterId, activeSemesterName } = useRegistrationPeriodViewModel();
+  const { registeredClasses, timeGridEvents, reloadTimetable } = useTimetableViewModel(studentId);
   const {
-    isUserInfoVisible,
-    toggleUserInfo,
     searchQuery,
     handleSearchQueryChange,
     isSuggestionVisible,
@@ -16955,30 +17132,35 @@ const StudentDashboard = () => {
     searchError,
     handleSelectSuggestion,
     handleRegisterSubject,
-    handleViewCurriculum,
-    handleLogout,
     registeredSubjects,
-    timeGridEvents,
-    currentRegPeriodType,
-    isSubmitting,
-    alarmMessage,
-    setAlarmMessage,
+    totalCredits,
+    statusNote,
     courseIdToDelete,
     promptDeleteCourse,
     cancelDeleteCourse,
-    confirmDeleteCourse,
+    confirmDeleteCourse
+  } = useCourseRegistrationViewModel(
+    studentId,
+    account ?? null,
     activeSemesterId,
-    activeSemesterName,
-    totalCredits,
-    statusNote,
+    currentRegPeriodType,
+    setAlarmMessage,
+    setIsSubmitting
+  );
+  const {
     expandedCourseIds,
     courseClassesData,
     isLoadingClasses,
     toggleCourseExpansion,
     handleRegisterClassSection,
-    handleCancelClassSection,
-    registeredClasses
-  } = useStudentDashboardViewModel(onLogout, account ?? null, onViewCurriculum);
+    handleCancelClassSection
+  } = useClassRegistrationViewModel(
+    studentId,
+    currentRegPeriodType,
+    setAlarmMessage,
+    setIsSubmitting,
+    reloadTimetable
+  );
   const { isDark, toggleTheme } = useTheme();
   const studentLabel = `${account?.name ?? "Sinh viên"} - ${account?.id_card ?? account?.username ?? account?.id ?? ""}`;
   const isRegistrationOpen = currentRegPeriodType !== "none";
@@ -17078,13 +17260,33 @@ const StudentDashboard = () => {
                           sub.credits,
                           " TC"
                         ] }),
-                        "statusLabel" in sub && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `suggestion-status status-${sub.status}`, children: sub.statusLabel }),
-                        "occupiedSlots" in sub && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "suggestion-status status-available", children: [
-                          "Còn ",
-                          sub.totalSlots - sub.occupiedSlots,
-                          "/",
-                          sub.totalSlots,
-                          " chỗ"
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "suggestion-badges-row", children: [
+                          "statusLabel" in sub && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `suggestion-status status-${sub.status}`, style: { width: "fit-content" }, children: sub.statusLabel }),
+                          "prerequisiteCode" in sub && !sub.canRegister && sub.prerequisiteCode && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "suggestion-status", style: { backgroundColor: "#fee2e2", color: "#ef4444", width: "fit-content" }, children: [
+                            "Cần học ",
+                            sub.prerequisiteCode,
+                            "-",
+                            sub.prerequisiteName,
+                            " trước"
+                          ] }),
+                          "parallelCode" in sub && sub.parallelCode && (sub.parallelCourseRawStatus === "completed" || sub.parallelCourseRawStatus === "re_registered" ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "suggestion-status status-completed", style: { width: "fit-content" }, children: [
+                            "Đã hoàn thành học phần song hành ",
+                            sub.parallelCode,
+                            "-",
+                            sub.parallelName
+                          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "suggestion-status", style: { backgroundColor: "#fef9c3", color: "#eab308", width: "fit-content" }, children: [
+                            "Học phần song hành ",
+                            sub.parallelCode,
+                            "-",
+                            sub.parallelName
+                          ] })),
+                          "occupiedSlots" in sub && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "suggestion-status status-available", style: { width: "fit-content" }, children: [
+                            "Còn ",
+                            sub.totalSlots - sub.occupiedSlots,
+                            "/",
+                            sub.totalSlots,
+                            " chỗ"
+                          ] })
                         ] })
                       ]
                     },
@@ -17114,8 +17316,7 @@ const StudentDashboard = () => {
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "table-scroll", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: { width: "40px" }, children: "DS Lớp" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "ID" }),
+              currentRegPeriodType === "register_class" && /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: { width: "40px" }, children: "DS Lớp" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Mã HP" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Tên học phần" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "TT đăng ký" }),
@@ -17125,7 +17326,7 @@ const StudentDashboard = () => {
             /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
               displayedSubjects.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs(React$2.Fragment, { children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: expandedCourseIds.has(item.courseId) ? "expanded-row" : "", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  currentRegPeriodType === "register_class" && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "button",
                     {
                       className: "expand-btn",
@@ -17133,7 +17334,6 @@ const StudentDashboard = () => {
                       children: expandedCourseIds.has(item.courseId) ? "▼" : "▶"
                     }
                   ) }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.id }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "course-code", children: item.code }) }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.name }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `table-status status-${getRegisteredStatusClass(item.rawStatus)}`, children: item.status }) }),
@@ -17148,7 +17348,7 @@ const StudentDashboard = () => {
                     }
                   ) })
                 ] }),
-                expandedCourseIds.has(item.courseId) && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { className: "sub-table-row", children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: currentRegPeriodType === "register_program" ? 7 : 6, style: { padding: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sub-table-container", style: { padding: "16px", background: "var(--bg-color)", borderBottom: "1px solid var(--border-color)" }, children: [
+                expandedCourseIds.has(item.courseId) && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { className: "sub-table-row", children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 5, style: { padding: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sub-table-container", style: { padding: "16px", background: "var(--bg-color)", borderBottom: "1px solid var(--border-color)" }, children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { style: { margin: "0 0 12px 0" }, children: "Danh sách lớp học phần" }),
                   isLoadingClasses[item.courseId] ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Đang tải..." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "info-table sub-table", style: { margin: 0, fontSize: "0.85rem" }, children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
@@ -17211,7 +17411,7 @@ const StudentDashboard = () => {
                   ] })
                 ] }) }) })
               ] }, item.id)),
-              displayedSubjects.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: currentRegPeriodType === "register_program" ? 7 : 6, className: "empty-table-cell", children: "Chưa có học phần đăng ký" }) })
+              displayedSubjects.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 5, className: "empty-table-cell", children: "Chưa có học phần đăng ký" }) })
             ] })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-footer", style: { marginTop: "16px", padding: "12px", background: "var(--surface-color)", borderRadius: "8px", border: "1px solid var(--border-color)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "credits-info", style: { display: "flex", flexDirection: "column", gap: "8px" }, children: [
@@ -17265,9 +17465,6 @@ const StudentDashboard = () => {
     ] })
   ] });
 };
-const registrationUseCase = new ManageStudentRegistration(
-  new StudentRegistrationRepositoryImpl()
-);
 const useCurriculumViewModel = (studentId) => {
   const [curriculum, setCurriculum] = reactExports.useState(null);
   const [isLoading, setIsLoading] = reactExports.useState(false);
@@ -17278,7 +17475,7 @@ const useCurriculumViewModel = (studentId) => {
     try {
       setIsLoading(true);
       setError(null);
-      setCurriculum(await registrationUseCase.getCurriculum(studentId));
+      setCurriculum(await curriculumController.getCurriculum(studentId));
     } catch (err) {
       setError(err.message || "Không thể tải chương trình đào tạo.");
     } finally {
@@ -17291,7 +17488,7 @@ const useCurriculumViewModel = (studentId) => {
   const handleRegisterCourse = async (course) => {
     try {
       setRegisteringCourseId(course.courseId);
-      await registrationUseCase.registerCourse(studentId, course.courseId);
+      await courseRegistrationController.registerCourse(studentId, course.courseId);
       setAlarmMessage(`Đã đăng ký học phần ${course.code}.`);
       await loadCurriculum();
     } catch (err) {
