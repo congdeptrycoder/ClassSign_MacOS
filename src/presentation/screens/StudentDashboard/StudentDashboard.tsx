@@ -41,7 +41,7 @@ export const StudentDashboard = () => {
 
     const { currentRegPeriodType, activeSemesterId, activeSemesterName } = useRegistrationPeriodViewModel();
 
-    const { registeredClasses, timeGridEvents, reloadTimetable } = useTimetableViewModel(studentId);
+    const { registeredClasses, timeGridEvents } = useTimetableViewModel(studentId);
 
     const {
         searchQuery,
@@ -82,8 +82,7 @@ export const StudentDashboard = () => {
         studentId,
         currentRegPeriodType,
         setAlarmMessage,
-        setIsSubmitting,
-        reloadTimetable
+        setIsSubmitting
     );
 
     const { isDark, toggleTheme } = useTheme();

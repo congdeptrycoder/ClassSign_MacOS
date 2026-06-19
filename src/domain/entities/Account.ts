@@ -1,4 +1,4 @@
-import { StudentStatusStrategyFactory } from '../strategies/IStudentStatusStrategy';
+import { StudentStatusStrategyFactory } from '../strategies/StudentStatusStrategyFactory';
 
 export class Account {
     id: number;

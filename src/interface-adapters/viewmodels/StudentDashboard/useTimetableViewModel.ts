@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { TimetableEntry } from '../../../domain/entities/StudentRegistration';
 import { timetableController } from '../../../di/student.di';
+import { FrontendEventBus, FRONTEND_EVENTS } from '../../../shared/utils/FrontendEventBus';
 
 export interface TimeEvent {
     day: string;
@@ -58,6 +59,16 @@ export const useTimetableViewModel = (studentId: number) => {
 
     useEffect(() => {
         reloadTimetable();
+
+        const handleTimetableChange = () => {
+            reloadTimetable();
+        };
+
+        FrontendEventBus.on(FRONTEND_EVENTS.TIMETABLE_CHANGED, handleTimetableChange);
+
+        return () => {
+            FrontendEventBus.off(FRONTEND_EVENTS.TIMETABLE_CHANGED, handleTimetableChange);
+        };
     }, [reloadTimetable]);
 
     return { registeredClasses, timeGridEvents, reloadTimetable };

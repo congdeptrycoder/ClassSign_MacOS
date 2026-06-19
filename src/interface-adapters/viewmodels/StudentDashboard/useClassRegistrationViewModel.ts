@@ -1,13 +1,13 @@
 import { useState, useCallback } from 'react';
 import { ClassSuggestion } from '../../../domain/entities/StudentRegistration';
 import { classRegistrationController } from '../../../di/student.di';
+import { FrontendEventBus, FRONTEND_EVENTS } from '../../../shared/utils/FrontendEventBus';
 
 export const useClassRegistrationViewModel = (
     studentId: number,
     currentRegPeriodType: string,
     setAlarmMessage: (msg: string | null) => void,
-    setIsSubmitting: (val: boolean) => void,
-    reloadTimetable: () => Promise<void>
+    setIsSubmitting: (val: boolean) => void
 ) => {
     const [expandedCourseIds, setExpandedCourseIds] = useState<Set<number>>(new Set());
     const [courseClassesData, setCourseClassesData] = useState<Record<number, ClassSuggestion[]>>({});
@@ -48,7 +48,7 @@ export const useClassRegistrationViewModel = (
             setIsSubmitting(true);
             await classRegistrationController.registerClass(studentId, classId);
             setAlarmMessage(`Đã đăng ký lớp học phần ${classCode} thành công.`);
-            await reloadTimetable();
+            FrontendEventBus.emit(FRONTEND_EVENTS.TIMETABLE_CHANGED);
         } catch (error: any) {
             setAlarmMessage(error.message || 'Đăng ký thất bại.');
         } finally {
@@ -70,7 +70,7 @@ export const useClassRegistrationViewModel = (
             setIsSubmitting(true);
             await classRegistrationController.cancelClassRegistration(studentId, classId);
             setAlarmMessage(`Đã huỷ lớp học phần ${classCode} thành công.`);
-            await reloadTimetable();
+            FrontendEventBus.emit(FRONTEND_EVENTS.TIMETABLE_CHANGED);
         } catch (error: any) {
             setAlarmMessage(error.message || 'Huỷ thất bại.');
         } finally {
@@ -85,7 +85,7 @@ export const useClassRegistrationViewModel = (
             setIsSubmitting(true);
             await classRegistrationController.registerClass(studentId, classId);
             setAlarmMessage(`Đã đăng ký lớp học phần ${classCode} thành công.`);
-            await reloadTimetable();
+            FrontendEventBus.emit(FRONTEND_EVENTS.TIMETABLE_CHANGED);
         } catch (error: any) {
             setAlarmMessage(error.message || 'Đăng ký thất bại.');
         } finally {

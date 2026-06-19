@@ -59,6 +59,47 @@ export const AdminCourseRegistrationDetails = () => {
         navigate('/admin/edit', { state: { classData } });
     };
 
+    const handleExportCSV = () => {
+        if (!window.confirm("Xác nhận tải file CSV")) return;
+
+        let csvContent = "Mã lớp,Mã lớp kèm,Mã HP,Tên HP,Ghi chú,Thứ,Tiết BĐ,Tiết KT,Buổi,Phòng học,Cần TN,SL Max,SL ĐK,Loại\n";
+        
+        stats.forEach(stat => {
+            const classes = courseClasses[stat.course_id] || [];
+            classes.forEach(cls => {
+                const row = [
+                    cls.ma_lop,
+                    cls.ma_lop_kem !== 'NULL' ? cls.ma_lop_kem : '',
+                    stat.ma_hp,
+                    stat.ten_hp,
+                    cls.ghi_chu !== 'NULL' ? cls.ghi_chu : '',
+                    cls.thu !== 'NULL' && cls.thu !== undefined ? cls.thu : '',
+                    cls.tiet_bd,
+                    cls.tiet_kt,
+                    cls.buoi,
+                    cls.phong_hoc,
+                    cls.can_tn !== 'NULL' ? cls.can_tn : '',
+                    cls.sl_max,
+                    cls.sl_dk,
+                    cls.teaching_type !== 'NULL' ? cls.teaching_type : ''
+                ];
+                // Escape quotes and commas
+                const escapedRow = row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
+                csvContent += escapedRow + "\n";
+            });
+        });
+
+        // Add BOM for Excel UTF-8 support
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `danh_sach_lop_hoc_${semesterString}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="admin-container">
             <header className="nav-bar">
@@ -81,9 +122,14 @@ export const AdminCourseRegistrationDetails = () => {
                     <h3 style={{ margin: 0 }}>
                         Kỳ học: {semesterString || 'Không xác định'}
                     </h3>
-                    <button className="delete-btn" onClick={handleBack}>
-                        Quay lại
-                    </button>
+                    <div>
+                        <button className="primary-btn" onClick={handleExportCSV} style={{ marginRight: '10px' }}>
+                            Xuất CSV
+                        </button>
+                        <button className="delete-btn" onClick={handleBack}>
+                            Quay lại
+                        </button>
+                    </div>
                 </section>
 
                 <section className="table-wrapper card">

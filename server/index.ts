@@ -5,8 +5,15 @@ import semesterRoutes from './semester/semester.routes';
 import academicPeriodRoutes from './academic-period/academic-period.routes';
 import studentRegistrationRoutes from './student-registration/student-registration.routes';
 import adminRoutes from './admin/admin.routes';
+import { registerAuditLogSubscriber } from './subscribers/RegistrationAuditLogSubscriber';
+import { registerClassCapacityWarningSubscriber } from './subscribers/ClassCapacityWarningSubscriber';
+
 const app = express();
 const PORT = process.env.PORT || 3002;
+
+// Register Event Subscribers
+registerAuditLogSubscriber();
+registerClassCapacityWarningSubscriber();
 
 // Configure middleware
 app.use(cors());

@@ -1,36 +1,25 @@
 import db from '../db';
 
+import { getActiveRegistrationPeriod, parseSchedule } from '../utils/registration.utils';
+import { dbAll, dbGet, dbRun } from '../utils/db.utils';
+import { ValidationContext } from '../strategies/IValidationStrategy';
+import { ClassRegistrationContext } from '../strategies/class-registration/ClassRegistrationContext';
+import { ActivePeriodClassStrategy } from '../strategies/class-registration/ActivePeriodClassStrategy';
+import { ClassCapacityStrategy } from '../strategies/class-registration/ClassCapacityStrategy';
+import { CourseRegisteredStrategy } from '../strategies/class-registration/CourseRegisteredStrategy';
+import { DuplicateClassStrategy } from '../strategies/class-registration/DuplicateClassStrategy';
+import { TimeOverlapStrategy } from '../strategies/class-registration/TimeOverlapStrategy';
+import { CourseRegistrationContext, SkipValidationException } from '../strategies/course-registration/CourseRegistrationContext';
+import { CurriculumCourseStrategy } from '../strategies/course-registration/CurriculumCourseStrategy';
+import { PrerequisiteCourseStrategy } from '../strategies/course-registration/PrerequisiteCourseStrategy';
+import { DuplicateCourseSemesterStrategy } from '../strategies/course-registration/DuplicateCourseSemesterStrategy';
+import { BackendEventBus } from '../infrastructure/events/EventBusImpl';
+import { ClassRegisteredEvent, ClassRegistrationCancelledEvent } from '../domain/events/ClassRegistrationEvents';
+
 type RunResult = {
   lastID: number;
   changes: number;
 };
-
-function dbAll<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows: T[]) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-}
-
-function dbGet<T>(sql: string, params: unknown[] = []): Promise<T | undefined> {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row: T | undefined) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-}
-
-function dbRun(sql: string, params: unknown[] = []): Promise<RunResult> {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function runCallback(err) {
-      if (err) reject(err);
-      else resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
-}
 
 async function ensureStudentCourseStatusColumn() {
   const columns = await dbAll<{ name: string }>('PRAGMA table_info(student_courses)');
@@ -327,25 +316,29 @@ export async function registerCourse(
     if (depth > 10) throw new Error('Phát hiện vòng lặp đệ quy học phần song hành.');
     if (collectedToRegister.has(targetCourseId)) return;
 
-    const curriculumCourse = courseMap.get(targetCourseId);
-    if (!curriculumCourse) {
-      if (!isAutoAdd) throw new Error('Học phần không thuộc chương trình đào tạo của sinh viên.');
-      return;
+    const validationContext = new ValidationContext<CourseRegistrationContext>();
+    validationContext.addStrategy(new CurriculumCourseStrategy());
+    validationContext.addStrategy(new PrerequisiteCourseStrategy());
+    validationContext.addStrategy(new DuplicateCourseSemesterStrategy());
+
+    const courseContext: CourseRegistrationContext = {
+      studentId,
+      targetCourseId,
+      isAutoAdd,
+      activePeriod,
+      courseMap
+    };
+
+    try {
+      await validationContext.validateAll(courseContext);
+    } catch (error) {
+      if (error instanceof SkipValidationException) {
+        return;
+      }
+      throw error;
     }
 
-    if (curriculumCourse.blockingReason) {
-      throw new Error(`Học phần tiên quyết ${curriculumCourse.prerequisiteCode}-${curriculumCourse.prerequisiteName} chưa hoàn thành`);
-    }
-
-    const existingInSemester = await dbGet<{ id: number }>(
-      `SELECT id FROM student_courses WHERE student_id = ? AND course_id = ? AND semester = ? LIMIT 1`,
-      [studentId, targetCourseId, activePeriod.semester]
-    );
-
-    if (existingInSemester) {
-      if (!isAutoAdd) throw new Error('Bạn đã đăng ký thành công trước đó');
-      return; 
-    }
+    const curriculumCourse = courseContext.curriculumCourse;
 
     collectedToRegister.set(targetCourseId, curriculumCourse);
     if (isAutoAdd) {
@@ -541,114 +534,19 @@ export async function getClassesForCourse(
 export async function registerClassSection(studentId: number, classId: number) {
   await ensureStudentRecord(studentId);
 
-  const activePeriod = await getActiveRegistrationPeriod('register_class');
-  if (!activePeriod) {
-    throw new Error('Hiện không trong giai đoạn đăng ký lớp học.');
-  }
+  const context = new ValidationContext<ClassRegistrationContext>();
+  context.addStrategy(new ActivePeriodClassStrategy());
+  context.addStrategy(new ClassCapacityStrategy());
+  context.addStrategy(new CourseRegisteredStrategy());
+  context.addStrategy(new DuplicateClassStrategy());
+  context.addStrategy(new TimeOverlapStrategy());
 
-  const classSection = await dbGet<any>(
-    `
-      SELECT
-        id,
-        course_id as courseId,
-        total_slots as totalSlots,
-        occupied_slots as occupiedSlots,
-        detail
-      FROM classes_course
-      WHERE id = ?
-    `,
-    [classId]
-  );
+  const registrationContext: ClassRegistrationContext = {
+    studentId,
+    classId
+  };
 
-  if (!classSection) {
-    throw new Error('Lớp học phần không tồn tại.');
-  }
-
-  if (classSection.occupiedSlots >= classSection.totalSlots) {
-    throw new Error('Lớp học phần đã hết chỗ.');
-  }
-
-  const registeredCourse = await dbGet(
-    `
-      SELECT id
-      FROM student_courses
-      WHERE student_id = ?
-        AND course_id = ?
-        AND COALESCE(status, 'registered') = 'registered'
-      LIMIT 1
-    `,
-    [studentId, classSection.courseId]
-  );
-
-  if (!registeredCourse) {
-    throw new Error('Sinh viên chưa đăng ký học phần của lớp này.');
-  }
-
-  const existingCourseClass = await dbGet(
-    `
-      SELECT scr.id
-      FROM student_class_registrations scr
-      JOIN classes_course cc ON cc.id = scr.class_id
-      WHERE scr.student_id = ? AND cc.course_id = ?
-      LIMIT 1
-    `,
-    [studentId, classSection.courseId]
-  );
-
-  if (existingCourseClass) {
-    throw new Error('Bạn đã đăng ký một lớp khác của học phần này.');
-  }
-
-  const classDetailObj = JSON.parse(classSection.detail || '{}');
-  const classBuoi = classDetailObj.buoi;
-
-  const classSlots = parseSchedule(classSection.detail);
-  for (const slot of classSlots) {
-    if (!slot.periods || slot.periods.length === 0) continue;
-    
-    const startPeriod = Math.min(...slot.periods);
-    const endPeriod = Math.max(...slot.periods);
-    const day = String(slot.day);
-    
-    const overlapQuery = `
-      SELECT co.course_code, co.course_name
-      FROM student_class_registrations scr
-      JOIN classes_course c ON scr.class_id = c.id
-      JOIN courses co ON c.course_id = co.id
-      WHERE scr.student_id = ?
-        AND CAST(json_extract(c.detail, '$.thu') AS TEXT) = ?
-        AND CAST(json_extract(c.detail, '$.buoi') AS TEXT) = ?
-        AND CAST(json_extract(c.detail, '$.tiet_bd') AS INTEGER) <= ?
-        AND CAST(json_extract(c.detail, '$.tiet_kt') AS INTEGER) >= ?
-      LIMIT 1
-    `;
-    
-    const overlap = await dbGet<any>(overlapQuery, [
-      studentId,
-      day,
-      classBuoi,
-      endPeriod,
-      startPeriod
-    ]);
-    
-    if (overlap) {
-      throw new Error(`Trùng lịch với lớp ${overlap.course_code} (${overlap.course_name}).`);
-    }
-  }
-
-  const existing = await dbGet(
-    `
-      SELECT id
-      FROM student_class_registrations
-      WHERE student_id = ? AND class_id = ?
-      LIMIT 1
-    `,
-    [studentId, classId]
-  );
-
-  if (existing) {
-    throw new Error('Lớp học phần này đã được đăng ký.');
-  }
+  await context.validateAll(registrationContext);
 
   try {
     await dbRun('BEGIN IMMEDIATE TRANSACTION');
@@ -668,6 +566,8 @@ export async function registerClassSection(studentId: number, classId: number) {
       [classId]
     );
     await dbRun('COMMIT');
+
+    BackendEventBus.publish(new ClassRegisteredEvent(studentId, classId));
 
     return { id: result.lastID };
   } catch (error) {
@@ -730,6 +630,7 @@ export async function removeClassRegistration(studentId: number, classId: number
       [classId]
     );
     await dbRun('COMMIT');
+    BackendEventBus.publish(new ClassRegistrationCancelledEvent(studentId, classId));
   } catch (error) {
     try {
       await dbRun('ROLLBACK');
