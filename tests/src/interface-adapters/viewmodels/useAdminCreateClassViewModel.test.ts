@@ -20,24 +20,24 @@ describe('useAdminCreateClassViewModel', () => {
 
     it('should initialize with initial state and handle change', () => {
         const initialState = {
-            ky: '20231',
-            ma_hp: 'IT101',
-            ten_hp: 'Intro',
+            semester: '20231',
+            courseCode: 'IT101',
+            courseName: 'Intro',
         };
         const mockNavigateBack = vi.fn();
 
         const { result } = renderHook(() => useAdminCreateClassViewModel(initialState, mockNavigateBack));
 
-        expect(result.current.formData.ky).toBe('20231');
-        expect(result.current.formData.ma_hp).toBe('IT101');
-        expect(result.current.formData.ten_hp).toBe('Intro');
-        expect(result.current.formData.buoi).toBe('Sáng'); // default value
+        expect(result.current.formData.semester).toBe('20231');
+        expect(result.current.formData.courseCode).toBe('IT101');
+        expect(result.current.formData.courseName).toBe('Intro');
+        expect(result.current.formData.daySession).toBe('Sáng'); // default value
 
         act(() => {
-            result.current.handleChange('ma_lop', 'L01');
+            result.current.handleChange('classCode', 'L01');
         });
 
-        expect(result.current.formData.ma_lop).toBe('L01');
+        expect(result.current.formData.classCode).toBe('L01');
     });
 
     it('should validate form fields before saving', async () => {
@@ -62,13 +62,13 @@ describe('useAdminCreateClassViewModel', () => {
         (adminClassController.createClassCourse as any).mockResolvedValue({});
 
         const { result } = renderHook(() => useAdminCreateClassViewModel({
-            ma_lop: 'L01',
-            thu: '2',
-            tiet_bd: '1',
-            tiet_kt: '3',
-            buoi: 'Sáng',
-            phong_hoc: 'D3-301',
-            sl_max: '50',
+            classCode: 'L01',
+            dayOfWeek: '2',
+            startPeriod: '1',
+            endPeriod: '3',
+            daySession: 'Sáng',
+            room: 'D3-301',
+            maxSlots: '50',
         }, mockNavigateBack));
 
         await act(async () => {
@@ -76,17 +76,17 @@ describe('useAdminCreateClassViewModel', () => {
         });
 
         expect(adminClassController.createClassCourse).toHaveBeenCalledWith(expect.objectContaining({
-            ma_lop: 'L01',
-            thu: '2',
-            tiet_bd: '1',
-            tiet_kt: '3',
-            buoi: 'Sáng',
-            phong_hoc: 'D3-301',
-            sl_max: '50',
-            ma_lop_kem: 'NULL', // fallback
-            ghi_chu: 'NULL',    // fallback
-            can_tn: 'NULL',     // fallback
-            teaching_type: 'NULL' // fallback
+            classCode: 'L01',
+            dayOfWeek: '2',
+            startPeriod: '1',
+            endPeriod: '3',
+            daySession: 'Sáng',
+            room: 'D3-301',
+            maxSlots: '50',
+            subClassCode: 'NULL', // fallback
+            notes: 'NULL',    // fallback
+            requiresExperiment: 'NULL',     // fallback
+            teachingType: 'NULL' // fallback
         }));
         expect(alertSpy).toHaveBeenCalledWith('Thành công: Đã lưu lớp học mới!');
         expect(mockNavigateBack).toHaveBeenCalled();
@@ -99,13 +99,13 @@ describe('useAdminCreateClassViewModel', () => {
         const mockNavigateBack = vi.fn();
 
         const { result } = renderHook(() => useAdminCreateClassViewModel({
-            ma_lop: 'L01',
-            thu: '2',
-            tiet_bd: '1',
-            tiet_kt: '3',
-            buoi: 'Sáng',
-            phong_hoc: 'D3-301',
-            sl_max: '50',
+            classCode: 'L01',
+            dayOfWeek: '2',
+            startPeriod: '1',
+            endPeriod: '3',
+            daySession: 'Sáng',
+            room: 'D3-301',
+            maxSlots: '50',
         }, mockNavigateBack, true)); // isEdit = true
 
         await act(async () => {
@@ -125,13 +125,13 @@ describe('useAdminCreateClassViewModel', () => {
 
         const { result } = renderHook(() => useAdminCreateClassViewModel({
             id: 99,
-            ma_lop: 'L01',
-            thu: '2',
-            tiet_bd: '1',
-            tiet_kt: '3',
-            buoi: 'Sáng',
-            phong_hoc: 'D3-301',
-            sl_max: '50',
+            classCode: 'L01',
+            dayOfWeek: '2',
+            startPeriod: '1',
+            endPeriod: '3',
+            daySession: 'Sáng',
+            room: 'D3-301',
+            maxSlots: '50',
         }, mockNavigateBack, true)); // isEdit = true
 
         await act(async () => {
@@ -140,13 +140,13 @@ describe('useAdminCreateClassViewModel', () => {
 
         expect(adminClassController.updateClassCourse).toHaveBeenCalledWith(99, expect.objectContaining({
             id: 99,
-            ma_lop: 'L01',
-            thu: '2',
-            tiet_bd: '1',
-            tiet_kt: '3',
-            buoi: 'Sáng',
-            phong_hoc: 'D3-301',
-            sl_max: '50',
+            classCode: 'L01',
+            dayOfWeek: '2',
+            startPeriod: '1',
+            endPeriod: '3',
+            daySession: 'Sáng',
+            room: 'D3-301',
+            maxSlots: '50',
         }));
         expect(alertSpy).toHaveBeenCalledWith('Thành công: Đã cập nhật thông tin lớp học!');
         expect(mockNavigateBack).toHaveBeenCalled();
@@ -160,13 +160,13 @@ describe('useAdminCreateClassViewModel', () => {
         (adminClassController.createClassCourse as any).mockRejectedValue(new Error('Save failed'));
 
         const { result } = renderHook(() => useAdminCreateClassViewModel({
-            ma_lop: 'L01',
-            thu: '2',
-            tiet_bd: '1',
-            tiet_kt: '3',
-            buoi: 'Sáng',
-            phong_hoc: 'D3-301',
-            sl_max: '50',
+            classCode: 'L01',
+            dayOfWeek: '2',
+            startPeriod: '1',
+            endPeriod: '3',
+            daySession: 'Sáng',
+            room: 'D3-301',
+            maxSlots: '50',
         }, mockNavigateBack));
 
         await act(async () => {

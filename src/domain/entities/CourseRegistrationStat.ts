@@ -1,11 +1,20 @@
 export class CourseRegistrationStat {
     constructor(
-        public course_id: number,
-        public ma_hp: string,
-        public ten_hp: string,
-        public truong_khoa: string,
-        public so_luong_dang_ky: number,
-        public so_luong_lop: number,
-        public so_luong_dk_toi_da: number
+        public readonly courseId: number,
+        public readonly courseCode: string,
+        public readonly courseName: string,
+        public readonly departmentName: string,
+        public readonly registrationCount: number,
+        public readonly classCount: number,
+        public readonly maxRegistrationCount: number
     ) {}
+
+    getFillRate(): number {
+        if (this.maxRegistrationCount <= 0) return 0;
+        return Math.round((this.registrationCount / this.maxRegistrationCount) * 100);
+    }
+
+    isFull(): boolean {
+        return this.registrationCount >= this.maxRegistrationCount && this.maxRegistrationCount > 0;
+    }
 }

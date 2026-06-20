@@ -1,24 +1,24 @@
 import { useState } from 'react';
 import { adminClassController } from '../../../di/admin.di';
-import { SaveClassCourseInputDTO } from '../../../application/dto/AdminClassDTO';
+import { SaveClassCourseInputDTO } from '../../entities/ClassCourse';
 
 export interface AdminCreateClassState {
     id?: number;
-    ky: string | number;
-    truong_khoa: string;
-    ma_hp: string;
-    ten_hp: string;
-    ma_lop: string;
-    ma_lop_kem: string;
-    ghi_chu: string;
-    thu: string;
-    tiet_bd: string;
-    tiet_kt: string;
-    buoi: string;
-    phong_hoc: string;
-    can_tn: string;
-    sl_max: string;
-    teaching_type: string;
+    semester: string | number;
+    departmentName: string;
+    courseCode: string;
+    courseName: string;
+    classCode: string;
+    subClassCode: string;
+    notes: string;
+    dayOfWeek: string;
+    startPeriod: string;
+    endPeriod: string;
+    daySession: string;
+    room: string;
+    requiresExperiment: string;
+    maxSlots: string;
+    teachingType: string;
 }
 
 export const useAdminCreateClassViewModel = (
@@ -28,21 +28,21 @@ export const useAdminCreateClassViewModel = (
 ) => {
     const [formData, setFormData] = useState<AdminCreateClassState>({
         id: initialState.id,
-        ky: initialState.ky || '',
-        truong_khoa: initialState.truong_khoa || '',
-        ma_hp: initialState.ma_hp || '',
-        ten_hp: initialState.ten_hp || '',
-        ma_lop: initialState.ma_lop || '',
-        ma_lop_kem: initialState.ma_lop_kem || '',
-        ghi_chu: initialState.ghi_chu || '',
-        thu: initialState.thu || '',
-        tiet_bd: initialState.tiet_bd || '',
-        tiet_kt: initialState.tiet_kt || '',
-        buoi: initialState.buoi || 'Sáng',
-        phong_hoc: initialState.phong_hoc || '',
-        can_tn: initialState.can_tn || '',
-        sl_max: initialState.sl_max || '',
-        teaching_type: initialState.teaching_type || '',
+        semester: initialState.semester || '',
+        departmentName: initialState.departmentName || '',
+        courseCode: initialState.courseCode || '',
+        courseName: initialState.courseName || '',
+        classCode: initialState.classCode || '',
+        subClassCode: initialState.subClassCode || '',
+        notes: initialState.notes || '',
+        dayOfWeek: initialState.dayOfWeek || '',
+        startPeriod: initialState.startPeriod || '',
+        endPeriod: initialState.endPeriod || '',
+        daySession: initialState.daySession || 'Sáng',
+        room: initialState.room || '',
+        requiresExperiment: initialState.requiresExperiment || '',
+        maxSlots: initialState.maxSlots || '',
+        teachingType: initialState.teachingType || '',
     });
 
     const handleChange = (key: keyof AdminCreateClassState, value: string) => {
@@ -53,17 +53,17 @@ export const useAdminCreateClassViewModel = (
     };
 
     const handleSave = async () => {
-        if (!formData.ma_lop || !formData.thu || !formData.tiet_bd || !formData.tiet_kt || !formData.buoi || !formData.phong_hoc || !formData.sl_max) {
+        if (!formData.classCode || !formData.dayOfWeek || !formData.startPeriod || !formData.endPeriod || !formData.daySession || !formData.room || !formData.maxSlots) {
             window.alert('Vui lòng điền đầy đủ các thông tin bắt buộc (có dấu *)');
             return;
         }
 
         const payload: SaveClassCourseInputDTO = {
             ...formData,
-            ma_lop_kem: formData.ma_lop_kem || 'NULL',
-            ghi_chu: formData.ghi_chu || 'NULL',
-            can_tn: formData.can_tn || 'NULL',
-            teaching_type: formData.teaching_type || 'NULL',
+            subClassCode: formData.subClassCode || 'NULL',
+            notes: formData.notes || 'NULL',
+            requiresExperiment: formData.requiresExperiment || 'NULL',
+            teachingType: formData.teachingType || 'NULL',
         };
 
         try {

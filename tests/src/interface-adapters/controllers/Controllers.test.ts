@@ -151,7 +151,7 @@ describe('Controllers Suite', () => {
       const controller = new LoginController(mockUseCase as any);
 
       const res = await controller.login('test', 'pass');
-      expect(res).toEqual({ success: true, account: mockAccount });
+      expect(res).toEqual(mockAccount);
       expect(mockUseCase.execute).toHaveBeenCalledWith('test', 'pass');
     });
 
@@ -159,8 +159,7 @@ describe('Controllers Suite', () => {
       const mockUseCase = { execute: vi.fn().mockRejectedValue(new Error('Auth failed')) };
       const controller = new LoginController(mockUseCase as any);
 
-      const res = await controller.login('test', 'pass');
-      expect(res).toEqual({ success: false, message: 'Auth failed' });
+      await expect(controller.login('test', 'pass')).rejects.toThrow('Auth failed');
     });
   });
 
@@ -185,7 +184,7 @@ describe('Controllers Suite', () => {
       const controller = new TimetableController(mockGetTimetable as any);
 
       expect(await controller.getTimetable(1)).toEqual(['timetable']);
-      expect(mockGetTimetable.execute).toHaveBeenCalledWith(1);
+      expect(mockGetTimetable.execute).toHaveBeenCalledWith(1, undefined);
     });
   });
 });

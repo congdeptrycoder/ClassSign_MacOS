@@ -62,13 +62,69 @@ describe('Repositories Integration/Unit Tests', () => {
         beforeEach(() => repo = new AdminClassRepositoryImpl());
 
         it('should create class', async () => {
-            await repo.createClassCourse({ ma_lop: 'A' } as any);
-            expect(apiClient.post).toHaveBeenCalledWith('/admin/classes', { ma_lop: 'A' });
+            await repo.createClassCourse({
+                semester: '20231',
+                departmentName: 'SoICT',
+                courseCode: 'IT101',
+                courseName: 'Intro',
+                classCode: 'A1',
+                subClassCode: 'B1',
+                notes: 'Note',
+                dayOfWeek: '2',
+                startPeriod: '1',
+                endPeriod: '3',
+                daySession: 'Sáng',
+                room: 'D3-301',
+                requiresExperiment: 'TN',
+                maxSlots: 50,
+                teachingType: 'Lecture'
+            });
+            expect(apiClient.post).toHaveBeenCalledWith('/admin/classes', {
+                ky: '20231',
+                truong_khoa: 'SoICT',
+                ma_hp: 'IT101',
+                ten_hp: 'Intro',
+                ma_lop: 'A1',
+                ma_lop_kem: 'B1',
+                ghi_chu: 'Note',
+                thu: '2',
+                tiet_bd: '1',
+                tiet_kt: '3',
+                buoi: 'Sáng',
+                phong_hoc: 'D3-301',
+                can_tn: 'TN',
+                sl_max: 50,
+                teaching_type: 'Lecture'
+            });
         });
 
         it('should update class', async () => {
-            await repo.updateClassCourse(1, { ma_lop: 'B' } as any);
-            expect(apiClient.put).toHaveBeenCalledWith('/admin/classes/1', { ma_lop: 'B' });
+            await repo.updateClassCourse(1, {
+                classCode: 'B2',
+                subClassCode: 'C2',
+                notes: 'Note 2',
+                dayOfWeek: '3',
+                startPeriod: '2',
+                endPeriod: '4',
+                daySession: 'Chiều',
+                room: 'D3-302',
+                requiresExperiment: 'NULL',
+                maxSlots: 40,
+                teachingType: 'Lab'
+            } as any);
+            expect(apiClient.put).toHaveBeenCalledWith('/admin/classes/1', {
+                ma_lop: 'B2',
+                ma_lop_kem: 'C2',
+                ghi_chu: 'Note 2',
+                thu: '3',
+                tiet_bd: '2',
+                tiet_kt: '4',
+                buoi: 'Chiều',
+                phong_hoc: 'D3-302',
+                can_tn: 'NULL',
+                sl_max: 40,
+                teaching_type: 'Lab'
+            });
         });
 
         it('should delete class', async () => {

@@ -123,7 +123,7 @@ describe('useTimetableViewModel and parseTimetableEvents', () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
 
-      expect(timetableController.getTimetable).toHaveBeenCalledWith(123);
+      expect(timetableController.getTimetable).toHaveBeenCalledWith(123, undefined);
       expect(result.current.registeredClasses).toEqual(mockTimetable);
       expect(result.current.timeGridEvents).toEqual([
         { day: 'T2', period: 1, name: 'CS101' },

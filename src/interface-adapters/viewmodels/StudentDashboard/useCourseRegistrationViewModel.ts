@@ -33,6 +33,19 @@ export const useCourseRegistrationViewModel = (
     setAlarmMessage: (msg: string | null) => void,
     setIsSubmitting: (val: boolean) => void
 ) => {
+    const accountInstance = useMemo(() => {
+        if (!account) return null;
+        if (account instanceof Account) return account;
+        return new Account(
+            account.id,
+            account.username,
+            account.name,
+            account.role,
+            account.id_card,
+            account.status
+        );
+    }, [account]);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [isSuggestionVisible, setIsSuggestionVisible] = useState(false);
     const [suggestions, setSuggestions] = useState<CurriculumCourse[]>([]);
@@ -114,22 +127,14 @@ export const useCourseRegistrationViewModel = (
     }, [registeredSubjects, activeSemesterId]);
 
     const maxCredits = useMemo(() => {
-        if (!account) return 24;
-        if (typeof account.getMaxAllowedCredits === 'function') {
-            return account.getMaxAllowedCredits();
-        }
-        const tempAccount = new Account(account.id, account.username, account.name, account.role, account.id_card, account.status);
-        return tempAccount.getMaxAllowedCredits();
-    }, [account]);
+        if (!accountInstance) return 24;
+        return accountInstance.getMaxAllowedCredits();
+    }, [accountInstance]);
 
     const statusNote = useMemo(() => {
-        if (!account) return 'Bạn được đăng ký tối đa 24 TC';
-        if (typeof account.getRegistrationStatusNote === 'function') {
-            return account.getRegistrationStatusNote();
-        }
-        const tempAccount = new Account(account.id, account.username, account.name, account.role, account.id_card, account.status);
-        return tempAccount.getRegistrationStatusNote();
-    }, [account]);
+        if (!accountInstance) return 'Bạn được đăng ký tối đa 24 TC';
+        return accountInstance.getRegistrationStatusNote();
+    }, [accountInstance]);
 
     const handleRegisterSubject = async () => {
         if (currentRegPeriodType !== 'register_program') return;

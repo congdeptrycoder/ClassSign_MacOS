@@ -39,22 +39,22 @@ export const AdminCourseRegistrationDetails = () => {
     const handleEditClass = (cls: any, stat: any) => {
         const classData = {
             id: cls.id,
-            ky: semesterString,
-            khoa_truong: stat.truong_khoa,
-            ma_hp: stat.ma_hp,
-            ten_hp: stat.ten_hp,
-            ma_lop: cls.ma_lop,
-            ma_lop_kem: cls.ma_lop_kem !== 'NULL' ? cls.ma_lop_kem : '',
-            ghi_chu: cls.ghi_chu !== 'NULL' ? cls.ghi_chu : '',
-            thu: cls.thu,
-            tiet_bd: cls.tiet_bd,
-            tiet_kt: cls.tiet_kt,
-            buoi: cls.buoi,
-            phong_hoc: cls.phong_hoc,
-            can_tn: cls.can_tn !== 'NULL' ? cls.can_tn : '',
-            sl_max: cls.sl_max,
-            sl_dk: cls.sl_dk,
-            teaching_type: cls.teaching_type !== 'NULL' ? cls.teaching_type : ''
+            semester: semesterString,
+            departmentName: stat.departmentName,
+            courseCode: stat.courseCode,
+            courseName: stat.courseName,
+            classCode: cls.classCode,
+            subClassCode: cls.subClassCode !== 'NULL' && cls.subClassCode ? cls.subClassCode : '',
+            notes: cls.notes !== 'NULL' && cls.notes ? cls.notes : '',
+            dayOfWeek: cls.dayOfWeek,
+            startPeriod: cls.startPeriod,
+            endPeriod: cls.endPeriod,
+            daySession: cls.daySession,
+            room: cls.room,
+            requiresExperiment: cls.requiresExperiment !== 'NULL' && cls.requiresExperiment ? cls.requiresExperiment : '',
+            maxSlots: cls.maxSlots,
+            occupiedSlots: cls.occupiedSlots,
+            teachingType: cls.teachingType !== 'NULL' && cls.teachingType ? cls.teachingType : ''
         };
         navigate('/admin/edit', { state: { classData } });
     };
@@ -65,26 +65,26 @@ export const AdminCourseRegistrationDetails = () => {
         let csvContent = "Mã lớp,Mã lớp kèm,Mã HP,Tên HP,Ghi chú,Thứ,Tiết BĐ,Tiết KT,Buổi,Phòng học,Cần TN,SL Max,SL ĐK,Loại\n";
         
         stats.forEach(stat => {
-            const classes = courseClasses[stat.course_id] || [];
+            const classes = courseClasses[stat.courseId] || [];
             classes.forEach(cls => {
                 const row = [
-                    cls.ma_lop,
-                    cls.ma_lop_kem !== 'NULL' ? cls.ma_lop_kem : '',
-                    stat.ma_hp,
-                    stat.ten_hp,
-                    cls.ghi_chu !== 'NULL' ? cls.ghi_chu : '',
-                    cls.thu !== 'NULL' && cls.thu !== undefined ? cls.thu : '',
-                    cls.tiet_bd,
-                    cls.tiet_kt,
-                    cls.buoi,
-                    cls.phong_hoc,
-                    cls.can_tn !== 'NULL' ? cls.can_tn : '',
-                    cls.sl_max,
-                    cls.sl_dk,
-                    cls.teaching_type !== 'NULL' ? cls.teaching_type : ''
+                    cls.classCode,
+                    cls.subClassCode !== 'NULL' && cls.subClassCode ? cls.subClassCode : '',
+                    stat.courseCode,
+                    stat.courseName,
+                    cls.notes !== 'NULL' && cls.notes ? cls.notes : '',
+                    cls.dayOfWeek !== 'NULL' && cls.dayOfWeek !== undefined ? cls.dayOfWeek : '',
+                    cls.startPeriod,
+                    cls.endPeriod,
+                    cls.daySession,
+                    cls.room,
+                    cls.requiresExperiment !== 'NULL' && cls.requiresExperiment ? cls.requiresExperiment : '',
+                    cls.maxSlots,
+                    cls.occupiedSlots,
+                    cls.teachingType !== 'NULL' && cls.teachingType ? cls.teachingType : ''
                 ];
                 // Escape quotes and commas
-                const escapedRow = row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
+                const escapedRow = row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
                 csvContent += escapedRow + "\n";
             });
         });
@@ -189,21 +189,21 @@ export const AdminCourseRegistrationDetails = () => {
                                 <tbody>
                                     {stats.map((stat, idx) => {
                                         let trangThai = "Đã đáp ứng đủ";
-                                        if (stat.so_luong_lop === 0) {
+                                        if (stat.classCount === 0) {
                                             trangThai = "Chưa có lớp";
-                                        } else if (stat.so_luong_dk_toi_da < stat.so_luong_dang_ky) {
+                                        } else if (stat.maxRegistrationCount < stat.registrationCount) {
                                             trangThai = "Chưa phục vụ đủ sinh viên";
                                         }
 
                                         return (
                                             <React.Fragment key={idx}>
                                                 <tr>
-                                                    <td>{stat.ma_hp}</td>
-                                                <td>{stat.ten_hp}</td>
-                                                <td>{stat.truong_khoa}</td>
-                                                <td>{stat.so_luong_dang_ky}</td>
-                                                <td>{stat.so_luong_lop}</td>
-                                                <td>{stat.so_luong_dk_toi_da}</td>
+                                                    <td>{stat.courseCode}</td>
+                                                <td>{stat.courseName}</td>
+                                                <td>{stat.departmentName}</td>
+                                                <td>{stat.registrationCount}</td>
+                                                <td>{stat.classCount}</td>
+                                                <td>{stat.maxRegistrationCount}</td>
                                                 <td>
                                                     <span style={{
                                                         color: trangThai === "Đã đáp ứng đủ" ? 'var(--statusSuccess)' : 'var(--statusDanger)',
@@ -215,23 +215,23 @@ export const AdminCourseRegistrationDetails = () => {
                                                 <td>
                                                     <button className="primary-btn" style={{ marginRight: '5px', fontSize: '12px', padding: '5px 10px' }} onClick={() => navigate('/admin/create-class', {
                                                         state: {
-                                                            ky: semesterString,
-                                                            truong_khoa: stat.truong_khoa,
-                                                            ma_hp: stat.ma_hp,
-                                                            ten_hp: stat.ten_hp
+                                                            semester: semesterString,
+                                                            departmentName: stat.departmentName,
+                                                            courseCode: stat.courseCode,
+                                                            courseName: stat.courseName
                                                         }
                                                     })}>Mở lớp</button>
-                                                    <button className="secondary-btn" style={{ fontSize: '12px', padding: '5px 10px' }} onClick={() => toggleExpandCourse(stat.course_id, semester!)}>
-                                                        {expandedCourseId === stat.course_id ? 'Đóng danh sách' : 'Xem danh sách lớp'}
+                                                    <button className="secondary-btn" style={{ fontSize: '12px', padding: '5px 10px' }} onClick={() => toggleExpandCourse(stat.courseId, semester!)}>
+                                                        {expandedCourseId === stat.courseId ? 'Đóng danh sách' : 'Xem danh sách lớp'}
                                                     </button>
                                                 </td>
                                             </tr>
-                                            {expandedCourseId === stat.course_id && (
-                                                <tr key={`expanded-${stat.course_id}`} style={{ backgroundColor: 'var(--surface)' }}>
+                                            {expandedCourseId === stat.courseId && (
+                                                <tr key={`expanded-${stat.courseId}`} style={{ backgroundColor: 'var(--surface)' }}>
                                                     <td colSpan={8} style={{ padding: '20px' }}>
-                                                        {loadingClasses && !courseClasses[stat.course_id] ? (
+                                                        {loadingClasses && !courseClasses[stat.courseId] ? (
                                                             <p>Đang tải danh sách lớp...</p>
-                                                        ) : (courseClasses[stat.course_id] || []).length === 0 ? (
+                                                        ) : (courseClasses[stat.courseId] || []).length === 0 ? (
                                                             <p style={{ textAlign: 'center', fontStyle: 'italic', margin: 0 }}>Chưa có lớp học nào</p>
                                                         ) : (
                                                             <table className="admin-table" style={{ margin: 0 }}>
@@ -253,24 +253,24 @@ export const AdminCourseRegistrationDetails = () => {
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
-                                                                    {(courseClasses[stat.course_id] || []).map((cls, cIdx) => (
+                                                                    {(courseClasses[stat.courseId] || []).map((cls, cIdx) => (
                                                                         <tr key={cIdx}>
-                                                                            <td>{cls.ma_lop}</td>
-                                                                            <td>{cls.ma_lop_kem !== 'NULL' ? cls.ma_lop_kem : ''}</td>
-                                                                            <td>{cls.ghi_chu !== 'NULL' ? cls.ghi_chu : ''}</td>
-                                                                            <td>{cls.thu !== 'NULL' && cls.thu !== undefined ? cls.thu : ''}</td>
-                                                                            <td>{cls.tiet_bd}</td>
-                                                                            <td>{cls.tiet_kt}</td>
-                                                                            <td>{cls.buoi}</td>
-                                                                            <td>{cls.phong_hoc}</td>
-                                                                            <td>{cls.can_tn !== 'NULL' ? cls.can_tn : ''}</td>
-                                                                            <td>{cls.sl_dk}</td>
-                                                                            <td>{cls.sl_max}</td>
-                                                                            <td>{cls.teaching_type !== 'NULL' ? cls.teaching_type : ''}</td>
+                                                                            <td>{cls.classCode}</td>
+                                                                            <td>{cls.subClassCode !== 'NULL' ? cls.subClassCode : ''}</td>
+                                                                            <td>{cls.notes !== 'NULL' ? cls.notes : ''}</td>
+                                                                            <td>{cls.dayOfWeek !== 'NULL' && cls.dayOfWeek !== undefined ? cls.dayOfWeek : ''}</td>
+                                                                            <td>{cls.startPeriod}</td>
+                                                                            <td>{cls.endPeriod}</td>
+                                                                            <td>{cls.daySession}</td>
+                                                                            <td>{cls.room}</td>
+                                                                            <td>{cls.requiresExperiment !== 'NULL' ? cls.requiresExperiment : ''}</td>
+                                                                            <td>{cls.occupiedSlots}</td>
+                                                                            <td>{cls.maxSlots}</td>
+                                                                            <td>{cls.teachingType !== 'NULL' ? cls.teachingType : ''}</td>
                                                                             <td>
                                                                                 <div className="action-cell">
                                                                                     <button className="edit-btn" style={{ fontSize: '10px', padding: '3px 6px' }} onClick={() => handleEditClass(cls, stat)}>Sửa</button>
-                                                                                    <button className="delete-btn" style={{ fontSize: '10px', padding: '3px 6px' }} onClick={() => handleDeleteClass(cls.id, stat.course_id, semester!)}>Xoá</button>
+                                                                                    <button className="delete-btn" style={{ fontSize: '10px', padding: '3px 6px' }} onClick={() => handleDeleteClass(cls.id, stat.courseId, semester!)}>Xoá</button>
                                                                                 </div>
                                                                             </td>
                                                                         </tr>

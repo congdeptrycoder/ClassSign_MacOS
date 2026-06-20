@@ -5,7 +5,7 @@ import { apiClient } from '../api/apiClient';
 export class AdminRepositoryImpl implements IAdminRepository {
     async getCourseRegistrationStats(semester: number): Promise<CourseRegistrationStat[]> {
         try {
-            const data = await apiClient.get<CourseRegistrationStat[]>(`/admin/course-registration-stats?semester=${semester}`);
+            const data = await apiClient.get<any[]>(`/admin/course-registration-stats?semester=${semester}`);
             return data.map(item => new CourseRegistrationStat(
                 item.course_id,
                 item.ma_hp,

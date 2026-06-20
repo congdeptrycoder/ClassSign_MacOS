@@ -5,6 +5,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAdminCourseRegistrationDetailsViewModel } from '../../../../src/interface-adapters/viewmodels/AdminCourseRegistrationDetails/useAdminCourseRegistrationDetailsViewModel';
 import { adminController, adminClassController } from '../../../../src/di/admin.di';
+import { CourseRegistrationStat } from '../../../../src/domain/entities/CourseRegistrationStat';
 
 vi.mock('../../../../src/di/admin.di', () => ({
     adminController: {
@@ -23,8 +24,8 @@ describe('useAdminCourseRegistrationDetailsViewModel', () => {
 
     it('should initialize and load stats when semester is provided', async () => {
         const mockStats = [
-            { id: 1, ma_hp: 'IT101', ten_hp: 'Intro', truong_khoa: 'SoICT', so_luong_dang_ky: 45 },
-            { id: 2, ma_hp: 'IT102', ten_hp: 'OOP', truong_khoa: null as any, so_luong_dang_ky: 30 },
+            new CourseRegistrationStat(1, 'IT101', 'Intro', 'SoICT', 45, 2, 50),
+            new CourseRegistrationStat(2, 'IT102', 'OOP', '', 30, 1, 40),
         ];
         (adminController.getCourseRegistrationStats as any).mockResolvedValue(mockStats);
 
@@ -57,8 +58,8 @@ describe('useAdminCourseRegistrationDetailsViewModel', () => {
 
     it('should filter stats correctly', async () => {
         const mockStats = [
-            { id: 1, ma_hp: 'IT101', ten_hp: 'Intro', truong_khoa: 'SoICT', so_luong_dang_ky: 45 },
-            { id: 2, ma_hp: 'PH102', ten_hp: 'Physics', truong_khoa: 'SAMI', so_luong_dang_ky: 30 },
+            new CourseRegistrationStat(1, 'IT101', 'Intro', 'SoICT', 45, 2, 50),
+            new CourseRegistrationStat(2, 'PH102', 'Physics', 'SAMI', 30, 1, 40),
         ];
         (adminController.getCourseRegistrationStats as any).mockResolvedValue(mockStats);
 
@@ -68,36 +69,36 @@ describe('useAdminCourseRegistrationDetailsViewModel', () => {
             await new Promise(resolve => setTimeout(resolve, 0));
         });
 
-        // Filter by ma_hp
+        // Filter by courseCode
         act(() => {
             result.current.setFilterMaHp('IT');
         });
         expect(result.current.stats.length).toBe(1);
-        expect(result.current.stats[0].ma_hp).toBe('IT101');
+        expect(result.current.stats[0].courseCode).toBe('IT101');
 
-        // Filter by ten_hp
+        // Filter by courseName
         act(() => {
             result.current.setFilterMaHp('');
             result.current.setFilterTenHp('Phys');
         });
         expect(result.current.stats.length).toBe(1);
-        expect(result.current.stats[0].ten_hp).toBe('Physics');
+        expect(result.current.stats[0].courseName).toBe('Physics');
 
-        // Filter by truong_khoa
+        // Filter by departmentName
         act(() => {
             result.current.setFilterTenHp('');
             result.current.setFilterTruongKhoa('SoI');
         });
         expect(result.current.stats.length).toBe(1);
-        expect(result.current.stats[0].truong_khoa).toBe('SoICT');
+        expect(result.current.stats[0].departmentName).toBe('SoICT');
 
-        // Filter by so_luong
+        // Filter by registrationCount
         act(() => {
             result.current.setFilterTruongKhoa('');
             result.current.setFilterSoLuong('30');
         });
         expect(result.current.stats.length).toBe(1);
-        expect(result.current.stats[0].so_luong_dang_ky).toBe(30);
+        expect(result.current.stats[0].registrationCount).toBe(30);
     });
 
     it('should expand and collapse course to load classes', async () => {

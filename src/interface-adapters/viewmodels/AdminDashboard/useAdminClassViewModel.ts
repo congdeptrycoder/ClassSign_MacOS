@@ -1,26 +1,28 @@
 import { useState, useEffect } from 'react';
 import { filterTableByColumn } from '../../../shared/utils/FilterTableByColumn';
 import { adminClassController } from '../../../di/admin.di';
+import { ClassCourseOutputDTO } from '../../entities/ClassCourse';
 
 export interface ClassInfo {
-    ky: string;
-    khoa_truong: string;
-    ma_lop: string;
-    ma_lop_kem: string;
-    ma_hp: string;
-    ten_hp: string;
-    khoi_luong: string;
-    ghi_chu: string;
-    thu: string;
-    tiet_bd: string;
-    tiet_kt: string;
-    buoi: string;
-    phong_hoc: string;
-    can_tn: string;
-    sl_dk: string;
-    sl_max: string;
-    trang_thai: string;
-    teaching_type: string;
+    id: number;
+    semester: string;
+    departmentName: string;
+    classCode: string;
+    subClassCode: string;
+    courseCode: string;
+    courseName: string;
+    credits: string;
+    notes: string;
+    dayOfWeek: string;
+    startPeriod: string;
+    endPeriod: string;
+    daySession: string;
+    room: string;
+    requiresExperiment: string;
+    occupiedSlots: string;
+    maxSlots: string;
+    status: string;
+    teachingType: string;
 }
 
 export const useAdminClassViewModel = (
@@ -49,9 +51,9 @@ export const useAdminClassViewModel = (
     };
 
     const handleDelete = async (item: ClassInfo) => {
-        if (window.confirm(`Xác nhận xoá: Bạn có chắc chắn muốn xoá lớp ${item.ma_lop}?`)) {
+        if (window.confirm(`Xác nhận xoá: Bạn có chắc chắn muốn xoá lớp ${item.classCode}?`)) {
             try {
-                const classId = (item as any).id;
+                const classId = item.id;
                 if (!classId) {
                     window.alert("Lỗi: Không tìm thấy ID của lớp học");
                     return;
@@ -60,7 +62,7 @@ export const useAdminClassViewModel = (
                 await adminClassController.deleteClassCourse(classId);
 
                 setClassesData(currentItems =>
-                    currentItems.filter(classItem => classItem.ma_lop !== item.ma_lop),
+                    currentItems.filter(classItem => classItem.classCode !== item.classCode),
                 );
             } catch (error: any) {
                 window.alert('Xoá lớp học thất bại: ' + (error.message || ''));
@@ -70,29 +72,29 @@ export const useAdminClassViewModel = (
 
     const loadClassesData = async (semesterId: number) => {
         try {
-            const data = await adminClassController.getAllClassesBySemester(semesterId);
+            const data: ClassCourseOutputDTO[] = await adminClassController.getAllClassesBySemester(semesterId);
 
-            const mappedData: ClassInfo[] = data.map((d: any) => ({
+            const mappedData: ClassInfo[] = data.map((d: ClassCourseOutputDTO) => ({
                 id: d.id,
-                ky: d.ky || semesterId.toString(),
-                khoa_truong: d.khoa_truong || '',
-                ma_lop: d.ma_lop || '',
-                ma_lop_kem: d.ma_lop_kem !== 'NULL' ? d.ma_lop_kem : '',
-                ma_hp: d.ma_hp || '',
-                ten_hp: d.ten_hp || '',
-                khoi_luong: d.khoi_luong || '',
-                ghi_chu: d.ghi_chu !== 'NULL' ? d.ghi_chu : '',
-                thu: d.thu || '',
-                tiet_bd: d.tiet_bd || '',
-                tiet_kt: d.tiet_kt || '',
-                buoi: d.buoi || '',
-                phong_hoc: d.phong_hoc || '',
-                can_tn: d.can_tn !== 'NULL' ? d.can_tn : '',
-                sl_dk: d.sl_dk?.toString() || '0',
-                sl_max: d.sl_max?.toString() || '0',
-                trang_thai: (d.sl_dk >= d.sl_max && d.sl_max > 0) ? 'Đã đầy' : 'Mở ĐK',
-                teaching_type: d.teaching_type !== 'NULL' ? d.teaching_type : '',
-            } as any));
+                semester: d.semester?.toString() || semesterId.toString(),
+                departmentName: d.departmentName || '',
+                classCode: d.classCode || '',
+                subClassCode: d.subClassCode !== 'NULL' && d.subClassCode ? d.subClassCode : '',
+                courseCode: d.courseCode || '',
+                courseName: d.courseName || '',
+                credits: d.credits || '',
+                notes: d.notes !== 'NULL' && d.notes ? d.notes : '',
+                dayOfWeek: d.dayOfWeek || '',
+                startPeriod: d.startPeriod || '',
+                endPeriod: d.endPeriod || '',
+                daySession: d.daySession || '',
+                room: d.room || '',
+                requiresExperiment: d.requiresExperiment !== 'NULL' && d.requiresExperiment ? d.requiresExperiment : '',
+                occupiedSlots: d.occupiedSlots?.toString() || '0',
+                maxSlots: d.maxSlots?.toString() || '0',
+                status: (d.occupiedSlots !== undefined && d.maxSlots !== undefined && d.occupiedSlots >= d.maxSlots && d.maxSlots > 0) ? 'Đã đầy' : 'Mở ĐK',
+                teachingType: d.teachingType !== 'NULL' && d.teachingType ? d.teachingType : '',
+            }));
 
             setClassesData(mappedData);
         } catch (error) {

@@ -25,27 +25,27 @@ describe('useAdminClassViewModel', () => {
         (adminClassController.getAllClassesBySemester as any).mockResolvedValue([
             {
                 id: 1,
-                ma_hp: 'IT101',
-                ten_hp: 'Intro',
-                ma_lop: 'A1',
-                sl_max: 50,
-                sl_dk: 0,
-                ma_lop_kem: 'NULL',
-                ghi_chu: 'NULL',
-                can_tn: 'NULL',
-                teaching_type: 'NULL',
+                courseCode: 'IT101',
+                courseName: 'Intro',
+                classCode: 'A1',
+                maxSlots: 50,
+                occupiedSlots: 0,
+                subClassCode: 'NULL',
+                notes: 'NULL',
+                requiresExperiment: 'NULL',
+                teachingType: 'NULL',
             },
             {
                 id: 2,
-                ma_hp: 'IT102',
-                ten_hp: 'OOP',
-                ma_lop: 'A2',
-                sl_max: 30,
-                sl_dk: 30, // Full
-                ma_lop_kem: 'B1',
-                ghi_chu: 'Note',
-                can_tn: 'TN',
-                teaching_type: 'Lecture',
+                courseCode: 'IT102',
+                courseName: 'OOP',
+                classCode: 'A2',
+                maxSlots: 30,
+                occupiedSlots: 30, // Full
+                subClassCode: 'B1',
+                notes: 'Note',
+                requiresExperiment: 'TN',
+                teachingType: 'Lecture',
             },
             {
                 id: 3,
@@ -64,16 +64,16 @@ describe('useAdminClassViewModel', () => {
         });
 
         expect(result.current.classesData.length).toBe(3);
-        expect(result.current.classesData[0].trang_thai).toBe('Mở ĐK');
-        expect(result.current.classesData[1].trang_thai).toBe('Đã đầy');
-        expect(result.current.classesData[2].trang_thai).toBe('Mở ĐK');
-        expect(result.current.classesData[0].ma_lop_kem).toBe('');
-        expect(result.current.classesData[1].ma_lop_kem).toBe('B1');
-        expect(result.current.classesData[2].ma_lop).toBe('');
+        expect(result.current.classesData[0].status).toBe('Mở ĐK');
+        expect(result.current.classesData[1].status).toBe('Đã đầy');
+        expect(result.current.classesData[2].status).toBe('Mở ĐK');
+        expect(result.current.classesData[0].subClassCode).toBe('');
+        expect(result.current.classesData[1].subClassCode).toBe('B1');
+        expect(result.current.classesData[2].classCode).toBe('');
 
         // Search
         act(() => {
-            result.current.handleFilterChange('ma_lop', 'NOT_FOUND');
+            result.current.handleFilterChange('classCode', 'NOT_FOUND');
         });
 
         expect(result.current.filteredClassesData.length).toBe(0);
@@ -88,7 +88,7 @@ describe('useAdminClassViewModel', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
 
         await act(async () => {
-            await result.current.handleDelete({ id: 1, ma_lop: 'A' } as any);
+            await result.current.handleDelete({ id: 1, classCode: 'A' } as any);
         });
 
         expect(adminClassController.deleteClassCourse).toHaveBeenCalledWith(1);
@@ -99,16 +99,16 @@ describe('useAdminClassViewModel', () => {
         const { result: withNav } = renderHook(() => useAdminClassViewModel(mockNavigate));
         
         act(() => {
-            withNav.current.handleEdit({ ma_lop: 'A' } as any);
+            withNav.current.handleEdit({ classCode: 'A' } as any);
         });
-        expect(mockNavigate).toHaveBeenCalledWith({ ma_lop: 'A' });
+        expect(mockNavigate).toHaveBeenCalledWith({ classCode: 'A' });
 
         // Without navigate
         const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
         const { result: withoutNav } = renderHook(() => useAdminClassViewModel(undefined));
         
         act(() => {
-            withoutNav.current.handleEdit({ ma_lop: 'A' } as any);
+            withoutNav.current.handleEdit({ classCode: 'A' } as any);
         });
         expect(alertSpy).toHaveBeenCalledWith('Chuyển hướng: Sẽ chuyển sang màn hình sửa với thông tin tương ứng.');
         alertSpy.mockRestore();
@@ -120,7 +120,7 @@ describe('useAdminClassViewModel', () => {
         // Cancel confirm
         const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
         await act(async () => {
-            await result.current.handleDelete({ id: 1, ma_lop: 'A' } as any);
+            await result.current.handleDelete({ id: 1, classCode: 'A' } as any);
         });
         expect(adminClassController.deleteClassCourse).not.toHaveBeenCalled();
         confirmSpy.mockRestore();
@@ -129,21 +129,21 @@ describe('useAdminClassViewModel', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
         await act(async () => {
-            await result.current.handleDelete({ ma_lop: 'A' } as any);
+            await result.current.handleDelete({ classCode: 'A' } as any);
         });
         expect(alertSpy).toHaveBeenCalledWith('Lỗi: Không tìm thấy ID của lớp học');
 
         // Delete failure
         (adminClassController.deleteClassCourse as any).mockRejectedValue(new Error('Delete error'));
         await act(async () => {
-            await result.current.handleDelete({ id: 1, ma_lop: 'A' } as any);
+            await result.current.handleDelete({ id: 1, classCode: 'A' } as any);
         });
         expect(alertSpy).toHaveBeenCalledWith('Xoá lớp học thất bại: Delete error');
 
         // Delete failure without message
         (adminClassController.deleteClassCourse as any).mockRejectedValue({});
         await act(async () => {
-            await result.current.handleDelete({ id: 1, ma_lop: 'A' } as any);
+            await result.current.handleDelete({ id: 1, classCode: 'A' } as any);
         });
         expect(alertSpy).toHaveBeenCalledWith('Xoá lớp học thất bại: ');
         alertSpy.mockRestore();

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CourseRegistrationStat } from '../../../domain/entities/CourseRegistrationStat';
 import { adminController, adminClassController } from '../../../di/admin.di';
+import { ClassCourseOutputDTO } from '../../entities/ClassCourse';
 
 export const useAdminCourseRegistrationDetailsViewModel = (semester: number | null) => {
     const [stats, setStats] = useState<CourseRegistrationStat[]>([]);
@@ -13,10 +14,8 @@ export const useAdminCourseRegistrationDetailsViewModel = (semester: number | nu
     const [filterSoLuong, setFilterSoLuong] = useState('');
 
     const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null);
-    const [courseClasses, setCourseClasses] = useState<Record<number, any[]>>({});
+    const [courseClasses, setCourseClasses] = useState<Record<number, ClassCourseOutputDTO[]>>({});
     const [loadingClasses, setLoadingClasses] = useState(false);
-
-
 
     useEffect(() => {
         if (!semester) return;
@@ -39,10 +38,10 @@ export const useAdminCourseRegistrationDetailsViewModel = (semester: number | nu
 
     const filteredStats = stats.filter(stat => {
         return (
-            stat.ma_hp.toLowerCase().includes(filterMaHp.toLowerCase()) &&
-            stat.ten_hp.toLowerCase().includes(filterTenHp.toLowerCase()) &&
-            (stat.truong_khoa || '').toLowerCase().includes(filterTruongKhoa.toLowerCase()) &&
-            stat.so_luong_dang_ky.toString().includes(filterSoLuong)
+            stat.courseCode.toLowerCase().includes(filterMaHp.toLowerCase()) &&
+            stat.courseName.toLowerCase().includes(filterTenHp.toLowerCase()) &&
+            (stat.departmentName || '').toLowerCase().includes(filterTruongKhoa.toLowerCase()) &&
+            stat.registrationCount.toString().includes(filterSoLuong)
         );
     });
 
@@ -75,8 +74,6 @@ export const useAdminCourseRegistrationDetailsViewModel = (semester: number | nu
                 setLoadingClasses(true);
                 const classes = await adminClassController.getClassesByCourse(sem, courseId);
                 setCourseClasses(prev => ({ ...prev, [courseId]: classes }));
-                
-                // Optionally reload stats if you want, but this is fine.
             } catch (err: any) {
                 window.alert('Lỗi khi xoá lớp: ' + (err.message || ''));
             } finally {

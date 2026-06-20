@@ -15,21 +15,21 @@ export const AdminCreateClass = () => {
 
     const initialState = isEdit ? {
         id: classData.id,
-        ky: classData.ky,
-        truong_khoa: classData.khoa_truong,
-        ma_hp: classData.ma_hp,
-        ten_hp: classData.ten_hp,
-        ma_lop: classData.ma_lop,
-        ma_lop_kem: classData.ma_lop_kem,
-        ghi_chu: classData.ghi_chu,
-        thu: classData.thu,
-        tiet_bd: classData.tiet_bd,
-        tiet_kt: classData.tiet_kt,
-        buoi: classData.buoi,
-        phong_hoc: classData.phong_hoc,
-        can_tn: classData.can_tn,
-        sl_max: classData.sl_max,
-        teaching_type: classData.teaching_type,
+        semester: classData.semester,
+        departmentName: classData.departmentName,
+        courseCode: classData.courseCode,
+        courseName: classData.courseName,
+        classCode: classData.classCode,
+        subClassCode: classData.subClassCode,
+        notes: classData.notes,
+        dayOfWeek: classData.dayOfWeek,
+        startPeriod: classData.startPeriod,
+        endPeriod: classData.endPeriod,
+        daySession: classData.daySession,
+        room: classData.room,
+        requiresExperiment: classData.requiresExperiment,
+        maxSlots: classData.maxSlots,
+        teachingType: classData.teachingType,
     } : (location.state || {});
 
     const onNavigateBack = () => {
@@ -69,68 +69,68 @@ export const AdminCreateClass = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                         <div>
                             <label>Kỳ học:</label>
-                            <input type="text" value={formData.ky} disabled style={{ width: '100%', padding: '8px', boxSizing: 'border-box', backgroundColor: '#e9ecef', cursor: 'not-allowed', marginTop: '5px' }} />
+                            <input type="text" value={formData.semester} disabled style={{ width: '100%', padding: '8px', boxSizing: 'border-box', backgroundColor: '#e9ecef', cursor: 'not-allowed', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Trường/Khoa:</label>
-                            <input type="text" value={formData.truong_khoa} disabled style={{ width: '100%', padding: '8px', boxSizing: 'border-box', backgroundColor: '#e9ecef', cursor: 'not-allowed', marginTop: '5px' }} />
+                            <input type="text" value={formData.departmentName} disabled style={{ width: '100%', padding: '8px', boxSizing: 'border-box', backgroundColor: '#e9ecef', cursor: 'not-allowed', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Mã Học Phần:</label>
-                            <input type="text" value={formData.ma_hp} disabled style={{ width: '100%', padding: '8px', boxSizing: 'border-box', backgroundColor: '#e9ecef', cursor: 'not-allowed', marginTop: '5px' }} />
+                            <input type="text" value={formData.courseCode} disabled style={{ width: '100%', padding: '8px', boxSizing: 'border-box', backgroundColor: '#e9ecef', cursor: 'not-allowed', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Tên Học Phần:</label>
-                            <input type="text" value={formData.ten_hp} disabled style={{ width: '100%', padding: '8px', boxSizing: 'border-box', backgroundColor: '#e9ecef', cursor: 'not-allowed', marginTop: '5px' }} />
+                            <input type="text" value={formData.courseName} disabled style={{ width: '100%', padding: '8px', boxSizing: 'border-box', backgroundColor: '#e9ecef', cursor: 'not-allowed', marginTop: '5px' }} />
                         </div>
 
                         {/* Editable fields */}
                         <div>
                             <label>Mã lớp: <span style={{ color: 'red' }}>*</span></label>
-                            <input type="text" value={formData.ma_lop} onChange={e => handleChange('ma_lop', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
+                            <input type="text" value={formData.classCode} onChange={e => handleChange('classCode', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Mã lớp kèm:</label>
-                            <input type="text" value={formData.ma_lop_kem} onChange={e => handleChange('ma_lop_kem', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
+                            <input type="text" value={formData.subClassCode} onChange={e => handleChange('subClassCode', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Ghi chú:</label>
-                            <input type="text" value={formData.ghi_chu} onChange={e => handleChange('ghi_chu', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
+                            <input type="text" value={formData.notes} onChange={e => handleChange('notes', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Thứ: <span style={{ color: 'red' }}>*</span></label>
-                            <input type="text" value={formData.thu} onChange={e => handleChange('thu', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
+                            <input type="text" value={formData.dayOfWeek} onChange={e => handleChange('dayOfWeek', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Tiết Bắt Đầu: <span style={{ color: 'red' }}>*</span></label>
-                            <input type="text" value={formData.tiet_bd} onChange={e => handleChange('tiet_bd', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
+                            <input type="text" value={formData.startPeriod} onChange={e => handleChange('startPeriod', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Tiết Kết Thúc: <span style={{ color: 'red' }}>*</span></label>
-                            <input type="text" value={formData.tiet_kt} onChange={e => handleChange('tiet_kt', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
+                            <input type="text" value={formData.endPeriod} onChange={e => handleChange('endPeriod', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Buổi: <span style={{ color: 'red' }}>*</span></label>
-                            <select value={formData.buoi} onChange={e => handleChange('buoi', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }}>
+                            <select value={formData.daySession} onChange={e => handleChange('daySession', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }}>
                                 <option value="Sáng">Sáng</option>
                                 <option value="Chiều">Chiều</option>
                             </select>
                         </div>
                         <div>
                             <label>Phòng học: <span style={{ color: 'red' }}>*</span></label>
-                            <input type="text" value={formData.phong_hoc} onChange={e => handleChange('phong_hoc', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
+                            <input type="text" value={formData.room} onChange={e => handleChange('room', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Cần TN:</label>
-                            <input type="text" value={formData.can_tn} onChange={e => handleChange('can_tn', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
+                            <input type="text" value={formData.requiresExperiment} onChange={e => handleChange('requiresExperiment', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>SL Max: <span style={{ color: 'red' }}>*</span></label>
-                            <input type="text" value={formData.sl_max} onChange={e => handleChange('sl_max', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
+                            <input type="text" value={formData.maxSlots} onChange={e => handleChange('maxSlots', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
                         </div>
                         <div>
                             <label>Teaching Type:</label>
-                            <input type="text" value={formData.teaching_type} onChange={e => handleChange('teaching_type', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
+                            <input type="text" value={formData.teachingType} onChange={e => handleChange('teachingType', e.target.value)} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginTop: '5px' }} />
                         </div>
                     </div>
                     

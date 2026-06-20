@@ -10,21 +10,21 @@ import hustLogo from '../../../../public/images/hust-logo.png';
 import './AdminDashboard.css';
 
 const tableHeaders: { label: string, key: keyof ClassInfo | 'action' }[] = [
-    { label: 'Trường/Khoa', key: 'khoa_truong' },
-    { label: 'Mã lớp', key: 'ma_lop' },
-    { label: 'Mã lớp kèm', key: 'ma_lop_kem' },
-    { label: 'Mã HP', key: 'ma_hp' },
-    { label: 'Tên HP', key: 'ten_hp' },
-    { label: 'Ghi chú', key: 'ghi_chu' },
-    { label: 'Thứ', key: 'thu' },
-    { label: 'Tiết BD', key: 'tiet_bd' },
-    { label: 'Tiết KT', key: 'tiet_kt' },
-    { label: 'Buổi', key: 'buoi' },
-    { label: 'Phòng học', key: 'phong_hoc' },
-    { label: 'Cần TN', key: 'can_tn' },
-    { label: 'SLDK', key: 'sl_dk' },
-    { label: 'SL Max', key: 'sl_max' },
-    { label: 'TeachingType', key: 'teaching_type' },
+    { label: 'Trường/Khoa', key: 'departmentName' },
+    { label: 'Mã lớp', key: 'classCode' },
+    { label: 'Mã lớp kèm', key: 'subClassCode' },
+    { label: 'Mã HP', key: 'courseCode' },
+    { label: 'Tên HP', key: 'courseName' },
+    { label: 'Ghi chú', key: 'notes' },
+    { label: 'Thứ', key: 'dayOfWeek' },
+    { label: 'Tiết BD', key: 'startPeriod' },
+    { label: 'Tiết KT', key: 'endPeriod' },
+    { label: 'Buổi', key: 'daySession' },
+    { label: 'Phòng học', key: 'room' },
+    { label: 'Cần TN', key: 'requiresExperiment' },
+    { label: 'SLDK', key: 'occupiedSlots' },
+    { label: 'SL Max', key: 'maxSlots' },
+    { label: 'TeachingType', key: 'teachingType' },
     { label: 'Hành động', key: 'action' },
 ];
 
@@ -237,21 +237,21 @@ export const AdminDashboard = () => {
                             <tbody>
                                 {filteredClassesData.map((item, idx) => (
                                     <tr key={idx}>
-                                        <td>{item.khoa_truong}</td>
-                                        <td>{item.ma_lop}</td>
-                                        <td>{item.ma_lop_kem}</td>
-                                        <td>{item.ma_hp}</td>
-                                        <td>{item.ten_hp}</td>
-                                        <td>{item.ghi_chu}</td>
-                                        <td>{item.thu}</td>
-                                        <td>{item.tiet_bd}</td>
-                                        <td>{item.tiet_kt}</td>
-                                        <td>{item.buoi}</td>
-                                        <td>{item.phong_hoc}</td>
-                                        <td>{item.can_tn}</td>
-                                        <td>{item.sl_dk}</td>
-                                        <td>{item.sl_max}</td>
-                                        <td>{item.teaching_type}</td>
+                                        <td>{item.departmentName}</td>
+                                        <td>{item.classCode}</td>
+                                        <td>{item.subClassCode}</td>
+                                        <td>{item.courseCode}</td>
+                                        <td>{item.courseName}</td>
+                                        <td>{item.notes}</td>
+                                        <td>{item.dayOfWeek}</td>
+                                        <td>{item.startPeriod}</td>
+                                        <td>{item.endPeriod}</td>
+                                        <td>{item.daySession}</td>
+                                        <td>{item.room}</td>
+                                        <td>{item.requiresExperiment}</td>
+                                        <td>{item.occupiedSlots}</td>
+                                        <td>{item.maxSlots}</td>
+                                        <td>{item.teachingType}</td>
                                         <td>
                                             <div className="action-cell">
                                                 <button className="edit-btn" onClick={() => handleEdit(item)}>Sửa</button>

@@ -1,4 +1,4 @@
-import { SaveClassCourseInputDTO, ClassCourseOutputDTO } from '../../application/dto/AdminClassDTO';
+import { SaveClassCourseInputDTO, ClassCourseOutputDTO } from '../entities/ClassCourse';
 
 export interface IAdminClassRepository {
     createClassCourse(data: SaveClassCourseInputDTO): Promise<void>;

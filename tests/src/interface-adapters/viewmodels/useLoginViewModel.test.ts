@@ -57,7 +57,7 @@ describe('useLoginViewModel', () => {
     });
 
     it('should handle successful login and run timeouts', async () => {
-        mockExecute.mockResolvedValue({ success: true, account: { id: 1, role: 'student', name: 'Test' } });
+        mockExecute.mockResolvedValue({ id: 1, role: 'student', name: 'Test' });
         
         const mockOnLoginSuccess = vi.fn();
         const { result } = renderHook(() => useLoginViewModel(mockOnLoginSuccess));
@@ -87,7 +87,7 @@ describe('useLoginViewModel', () => {
     });
 
     it('should handle login error with fallback message', async () => {
-        mockExecute.mockResolvedValue({ success: false });
+        mockExecute.mockRejectedValue(new Error(''));
         
         const { result } = renderHook(() => useLoginViewModel());
         
@@ -100,7 +100,7 @@ describe('useLoginViewModel', () => {
     });
 
     it('should handle login error', async () => {
-        mockExecute.mockResolvedValue({ success: false, message: 'Invalid credentials' });
+        mockExecute.mockRejectedValue(new Error('Invalid credentials'));
         
         const { result } = renderHook(() => useLoginViewModel());
         

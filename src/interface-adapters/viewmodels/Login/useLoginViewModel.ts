@@ -16,9 +16,8 @@ export const useLoginViewModel = (onLoginSuccess?: (account: Account) => void) =
         setPasswordStatus('default');
         setNotification(null);
 
-        const result = await loginController.login(currentUsername, password);
-
-        if (result.success && result.account) {
+        try {
+            const account = await loginController.login(currentUsername, password);
             setUsernameStatus('success');
 
             setTimeout(() => {
@@ -26,16 +25,15 @@ export const useLoginViewModel = (onLoginSuccess?: (account: Account) => void) =
             }, 300);
 
             setTimeout(() => {
-                onLoginSuccess?.(result.account);
+                onLoginSuccess?.(account);
             }, 800);
-
-        } else {
-            setNotification(result.message || 'Sai thông tin đăng nhập.');
-
+        } catch (error: any) {
+            setNotification(error.message || 'Sai thông tin đăng nhập.');
             setUsernameStatus('error');
             setPasswordStatus('error');
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     return {

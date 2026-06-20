@@ -2,11 +2,7 @@ import { IAccountRepository } from '../../domain/repositories/IAccountRepository
 import { Account } from '../../domain/entities/Account';
 
 export class LoginUseCase {
-    private accountRepository: IAccountRepository;
-
-    constructor(accountRepository: IAccountRepository) {
-        this.accountRepository = accountRepository;
-    }
+    constructor(private readonly accountRepository: IAccountRepository) {}
 
     async execute(username: string, password: string): Promise<Account> {
         if (!username || !password) {

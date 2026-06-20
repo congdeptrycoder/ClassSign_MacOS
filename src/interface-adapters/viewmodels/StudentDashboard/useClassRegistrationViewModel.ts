@@ -38,9 +38,11 @@ export const useClassRegistrationViewModel = (
         }
     };
 
-    const handleRegisterClassSection = async (classId: number, classCode: string) => {
+    const registerClass = async (classId: number, classCode: string, showAlertIfInactive = false) => {
         if (currentRegPeriodType !== 'register_class') {
-            setAlarmMessage('Hiện không trong giai đoạn đăng ký lớp học.');
+            if (showAlertIfInactive) {
+                setAlarmMessage('Hiện không trong giai đoạn đăng ký lớp học.');
+            }
             return;
         }
 
@@ -54,6 +56,10 @@ export const useClassRegistrationViewModel = (
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleRegisterClassSection = async (classId: number, classCode: string) => {
+        await registerClass(classId, classCode, true);
     };
 
     const handleCancelClassSection = async (classId: number, classCode: string) => {
@@ -78,19 +84,8 @@ export const useClassRegistrationViewModel = (
         }
     };
 
-    // Thêm hàm registerClass từ thanh tìm kiếm
     const handleRegisterClassFromSearch = async (classId: number, classCode: string) => {
-        if (currentRegPeriodType !== 'register_class') return;
-        try {
-            setIsSubmitting(true);
-            await classRegistrationController.registerClass(studentId, classId);
-            setAlarmMessage(`Đã đăng ký lớp học phần ${classCode} thành công.`);
-            FrontendEventBus.emit(FRONTEND_EVENTS.TIMETABLE_CHANGED);
-        } catch (error: any) {
-            setAlarmMessage(error.message || 'Đăng ký thất bại.');
-        } finally {
-            setIsSubmitting(false);
-        }
+        await registerClass(classId, classCode, false);
     };
 
     return {
