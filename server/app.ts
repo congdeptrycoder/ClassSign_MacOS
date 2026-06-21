@@ -28,7 +28,13 @@ app.use('/api/academic-periods', academicPeriodRoutes);
 app.use('/api/students', studentRegistrationRoutes);
 app.use('/api/admin', adminRoutes);
 
-const LOG_DIR = path.join(__dirname, '../logs');
+let LOG_DIR = path.join(__dirname, '../logs');
+
+if (process.versions && process.versions.electron) {
+    const { app: electronApp } = require('electron');
+    LOG_DIR = path.join(electronApp.getPath('userData'), 'logs');
+}
+
 const CLIENT_LOG_FILE = path.join(LOG_DIR, 'client.log');
 
 if (!fs.existsSync(LOG_DIR)) {

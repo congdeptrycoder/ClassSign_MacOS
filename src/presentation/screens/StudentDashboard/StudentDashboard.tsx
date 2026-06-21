@@ -367,7 +367,7 @@ export const StudentDashboard = () => {
                                                                                             {isRegistered ? (
                                                                                                 <button
                                                                                                     className="outline-btn"
-                                                                                                    onClick={() => handleCancelClassSection(cls.id, item.code)}
+                                                                                                    onClick={() => handleCancelClassSection(cls.id, item.courseId, item.code)}
                                                                                                     disabled={isSubmitting}
                                                                                                     style={{ padding: '4px 12px', fontSize: '0.85rem' }}
                                                                                                 >
@@ -376,7 +376,7 @@ export const StudentDashboard = () => {
                                                                                             ) : isAnyClassRegisteredForCourse ? null : (
                                                                                                 <button
                                                                                                     className="primary-btn"
-                                                                                                    onClick={() => handleRegisterClassSection(cls.id, item.code)}
+                                                                                                    onClick={() => handleRegisterClassSection(cls.id, item.courseId, item.code)}
                                                                                                     disabled={isSubmitting || cls.occupiedSlots >= cls.totalSlots}
                                                                                                     style={{ padding: '4px 12px', fontSize: '0.85rem', ...(cls.occupiedSlots >= cls.totalSlots ? { background: 'var(--border-color)', color: 'var(--text-secondary)' } : {}) }}
                                                                                                 >

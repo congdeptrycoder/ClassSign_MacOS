@@ -1,5 +1,6 @@
 export const FRONTEND_EVENTS = {
-    TIMETABLE_CHANGED: 'TIMETABLE_CHANGED'
+    TIMETABLE_CHANGED: 'TIMETABLE_CHANGED',
+    CLASS_SLOTS_CHANGED: 'CLASS_SLOTS_CHANGED',  // emitted after register/cancel a class section
 } as const;
 
 class FrontendEventBusClass extends EventTarget {

@@ -4,11 +4,36 @@
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "build": "electron-vite build && electron-builder --dir",
+    "pack:win": "electron-vite build && electron-builder --win --x64",
+    "pack:mac": "electron-vite build && electron-builder --mac",
     "preview": "electron-vite preview",
     "start": "electron .",
     "server": "tsx server/index.ts",
     "test": "vitest"
+  },
+  "build": {
+    "appId": "com.congchi.class-registration",
+    "productName": "Class Registration",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/infrastructure/database/database.sqlite",
+        "to": "database.sqlite"
+      }
+    ],
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    }
   },
   "dependencies": {
     "@electron-toolkit/preload": "^1.0.3",
@@ -35,6 +60,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^4.1.9",
     "electron": "^33.2.1",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
     "jsdom": "^29.1.1",
     "supertest": "^7.2.2",

@@ -14,6 +14,8 @@ export const LoginScreen = () => {
 
     const onLoginSuccess = (account: Account) => {
         saveCurrentAccount(account);
+        // Notify main process so the native "Log Out" menu item becomes enabled
+        try { window.api?.setLoggedIn(true); } catch { /* running outside Electron */ }
         if (account.role === 'admin') {
             navigate('/admin');
         } else {

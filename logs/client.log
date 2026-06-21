@@ -1,3 +1,15 @@
 [2026-06-20T13:44:24.163Z] [WARN] Test integration log message 1781963064162
 [2026-06-20T13:45:51.715Z] [WARN] Test integration log message 1781963151714
 [2026-06-20T13:46:22.636Z] [WARN] Test integration log message 1781963182634
+[2026-06-20T14:29:48.852Z] [ERROR] StudentCourseRegistrationRepositoryImpl getCurriculum error: Không tìm thấy tài khoản sinh viên.
+[2026-06-20T17:16:28.574Z] [WARN] Test integration log message 1781975788573
+[2026-06-20T17:16:44.368Z] [WARN] Test integration log message 1781975804366
+[2026-06-20T17:16:53.750Z] [WARN] Test integration log message 1781975813749
+[2026-06-21T08:09:32.720Z] [WARN] Test integration log message 1782029372719
+[2026-06-21T08:19:03.391Z] [WARN] Test integration log message 1782029943390
+[2026-06-21T08:19:54.486Z] [WARN] Test integration log message 1782029994485
+[2026-06-21T15:08:37.876Z] [WARN] Test integration log message 1782054517872
+[2026-06-21T16:32:03.039Z] [WARN] Test integration log message 1782059523038
+[2026-06-21T17:08:36.612Z] [ERROR] StudentCourseRegistrationRepositoryImpl getCurriculum error: Không tìm thấy tài khoản sinh viên.
+[2026-06-21T17:09:18.471Z] [ERROR] StudentCourseRegistrationRepositoryImpl registerCourse error: Học phần tiên quyết AC2010-Kỹ thuật lập trình chưa hoàn thành
+[2026-06-21T17:09:33.437Z] [ERROR] StudentCourseRegistrationRepositoryImpl getCurriculum error: Không tìm thấy tài khoản sinh viên.
