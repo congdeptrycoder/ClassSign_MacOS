@@ -3,6 +3,7 @@ import path from 'path';
 
 export default defineConfig({
   test: {
+    exclude: ['tests/e2e/**', 'node_modules/**', 'dist/**', 'out/**'],
     globals: true,
     environmentMatchGlobs: [
       ['tests/integration/server/**/*.ts', 'node'],

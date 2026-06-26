@@ -45,19 +45,9 @@ Call log:
         - columnheader "Trạng thái"
         - columnheader "Hành động"
     - rowgroup:
-      - row "202485 Đăng ký Lớp học 06:06:00 19/6/2026 06:06:00 2/7/2026 ĐÃ KẾT THÚC Xem chi tiết Sửa Xoá":
-        - cell "202485"
-        - cell "Đăng ký Lớp học"
-        - cell "06:06:00 19/6/2026"
-        - cell "06:06:00 2/7/2026"
-        - cell "ĐÃ KẾT THÚC"
-        - cell "Xem chi tiết Sửa Xoá":
-          - button "Xem chi tiết"
-          - button "Sửa"
-          - button "Xoá"
-      - row "20253 Đăng ký Lớp học 23:00:00 1/6/2026 23:00:00 7/7/2026 ĐÃ KẾT THÚC Xem chi tiết Sửa Xoá":
+      - row "20253 Đăng ký Học phần 23:00:00 1/6/2026 23:00:00 7/7/2026 ĐÃ KẾT THÚC Xem chi tiết Sửa Xoá":
         - cell "20253"
-        - cell "Đăng ký Lớp học"
+        - cell "Đăng ký Học phần"
         - cell "23:00:00 1/6/2026"
         - cell "23:00:00 7/7/2026"
         - cell "ĐÃ KẾT THÚC"
@@ -67,8 +57,8 @@ Call log:
           - button "Xoá"
   - heading "Quản lý danh sách lớp học" [level=3]
   - combobox:
-    - option "202543" [selected]
-    - option "202485"
+    - option "202862" [selected]
+    - option "202265"
     - option "20253"
     - option "20252"
     - option "20251"
